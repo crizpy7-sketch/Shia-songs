@@ -10,6 +10,14 @@ const supabase=PREVIEW_MODE?null:createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=s=>document.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)], esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 
 
+// Motion is optional: core forms also work if its separate module fails to load.
+const scrollBehavior=()=>typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth';
+const animateStep=element=>window.ShiaMotion?.animateStep(element);
+
+/* Decorative SVGs inherit the control's accessible name. */
+const iconPaths={arrow:'M6 18 18 6M6 6h12v12',up:'m6 14 6-6 6 6',down:'m6 10 6 6 6-6',remove:'m6 6 12 12M18 6 6 18'};
+const icon=name=>`<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${iconPaths[name]}"/></svg>`;
+
 /* ---------- field helpers ---------- */
 const text=(n,o={})=>({t:'text',n,...o}), num=(n,o={})=>({t:'num',n,...o}), date=(n,o={})=>({t:'date',n,...o});
 const area=(n,o={})=>({t:'area',n,...o}), pick=(n,o,x={})=>({t:'radio',n,o,...x}), note=t=>({t:'note',text:t});
@@ -205,7 +213,7 @@ $$('[data-plan]').forEach(a=>a.onclick=()=>{selectedPlan=a.dataset.plan});
 $('#year').textContent=new Date().getFullYear();
 
 /* ---------- template picker ---------- */
-$('#tgrid').innerHTML=TEMPLATE_ORDER.map((id,i)=>{const t=TEMPLATES[id];return `<button type="button" class="tcard" data-t="${id}"><span class="occasion-top"><span class="occasion-num">${String(i+1).padStart(2,'0')}</span><span aria-hidden="true">↗</span></span><b>${esc(t.name)}</b><small>${esc(t.blurb)}</small></button>`}).join('');
+$('#tgrid').innerHTML=TEMPLATE_ORDER.map((id,i)=>{const t=TEMPLATES[id];return `<button type="button" class="tcard" data-t="${id}"><span class="occasion-top"><span class="occasion-num">${String(i+1).padStart(2,'0')}</span>${icon('arrow')}</span><b>${esc(t.name)}</b><small>${esc(t.blurb)}</small></button>`}).join('');
 $$('.tcard').forEach(b=>b.onclick=()=>chooseTemplate(b.dataset.t));
 
 function chooseTemplate(id){
@@ -218,11 +226,12 @@ function chooseTemplate(id){
   pendingSubmission=null;
   $('#stepHost').innerHTML=steps.map(stepHTML).join('');
   bindPhotoStep();resetPhotos();restore();
-  $$('[name="Paquete"]').forEach(r=>{r.checked=r.value===selectedPlan;r.onchange=()=>selectedPlan=r.value});cur=0;ui();
+  $$('[name="Paquete"]').forEach(r=>{r.checked=r.value===selectedPlan;r.onchange=()=>selectedPlan=r.value});cur=0;
   $('#picker').classList.add('hidden');$('#formArea').classList.remove('hidden');
-  scrollTo({top:0,behavior:'smooth'});
+  ui();
+  scrollTo({top:0,behavior:scrollBehavior()});
 }
-$('#changeTemplate').onclick=()=>{if(pendingSubmission)return showError('Hay una solicitud pendiente de confirmar. Reintente el envío antes de cambiar el tipo de canción.');save();$('#formArea').classList.add('hidden');$('#picker').classList.remove('hidden');scrollTo({top:0,behavior:'smooth'})};
+$('#changeTemplate').onclick=()=>{if(pendingSubmission)return showError('Hay una solicitud pendiente de confirmar. Reintente el envío antes de cambiar el tipo de canción.');save();$('#formArea').classList.add('hidden');$('#picker').classList.remove('hidden');scrollTo({top:0,behavior:scrollBehavior()})};
 
 /* ---------- step rendering ---------- */
 function fieldHTML(x){
@@ -249,7 +258,7 @@ function stepHTML(s){
 
 const PHOTOS_HTML=`<p class="note">Estas fotos son las que se usan para el video / slideshow que acompaña la canción. Súbalas en el orden en que quiere que aparezcan y escríbale a cada una qué momento es — así el video cuenta la historia igual que la letra. Puede adjuntar hasta 20 archivos en total entre fotos y videos.</p>
 <label class="upload"><input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp,image/heic,.heic" multiple><strong>Agregar fotos para el slideshow</strong><small>JPG, PNG, WebP o HEIC · máximo 50 MB por foto</small></label>
-<div class="count"><b id="photoCount">Sin fotos todavía</b><span>Use ▲ ▼ para cambiar el orden</span></div>
+<div class="count"><b id="photoCount">Sin fotos todavía</b><span>Use los botones ${icon('up')} ${icon('down')} para cambiar el orden</span></div>
 <div id="thumbs" class="thumbs"></div>
 <h4>Videos de referencia (opcional)</h4>
 <p class="note">Si tiene clips de video que ayuden a contar su historia, súbalos aquí. Estos archivos son una referencia y no entran al slideshow.</p>
@@ -287,7 +296,7 @@ function addExtras(list){
 }
 function renderPhotos(){
   const host=$('#thumbs');if(!host)return;
-  host.innerHTML=photos.map((p,i)=>`<div class="thumb"><img src="${p.url}" alt="Foto ${i+1}"><div class="tb"><span class="num">${i+1}</span><button type="button" data-up="${i}" aria-label="Mover foto ${i+1} antes"${i?'':' disabled'}>▲</button><button type="button" data-down="${i}" aria-label="Mover foto ${i+1} después"${i===photos.length-1?' disabled':''}>▼</button><button type="button" class="rm" data-rm="${i}" aria-label="Quitar foto ${i+1}">✕</button></div><input class="cap" data-cap="${i}" aria-label="Descripción de la foto ${i+1}" placeholder="¿Qué momento es?" value="${esc(p.caption)}"></div>`).join('');
+  host.innerHTML=photos.map((p,i)=>`<div class="thumb"><img src="${p.url}" alt="Foto ${i+1}"><div class="tb"><span class="num">${i+1}</span><button type="button" data-up="${i}" aria-label="Mover foto ${i+1} antes"${i?'':' disabled'}>${icon('up')}</button><button type="button" data-down="${i}" aria-label="Mover foto ${i+1} después"${i===photos.length-1?' disabled':''}>${icon('down')}</button><button type="button" class="rm" data-rm="${i}" aria-label="Quitar foto ${i+1}">${icon('remove')}</button></div><input class="cap" data-cap="${i}" aria-label="Descripción de la foto ${i+1}" placeholder="¿Qué momento es?" value="${esc(p.caption)}"></div>`).join('');
   const mb=photos.reduce((n,p)=>n+p.file.size,0)/1048576;
   $('#photoCount').textContent=photos.length?`${photos.length} ${photos.length===1?'foto':'fotos'} · ${mb.toFixed(1)} MB`:'Sin fotos todavía';
   $$('[data-up]',host).forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
@@ -322,13 +331,14 @@ function ui(){
   $('#sl').textContent=`Paso ${cur+1} de ${steps.length}`;$('#pc').textContent=p+'%';$('#bar').style.width=p+'%';
   $('.track').setAttribute('aria-valuenow',p);
   nodes[cur]?.querySelector('h2')?.focus({preventScroll:true});
+  animateStep(nodes[cur]);
 
   $('#back').style.visibility=cur?'visible':'hidden';
   $('#next').classList.toggle('hidden',cur===steps.length-1);
   $('#submit').classList.toggle('hidden',cur!==steps.length-1);
   $('#err').classList.remove('show');
   if(cur===steps.length-1)review();
-  scrollTo({top:0,behavior:'smooth'});
+  scrollTo({top:0,behavior:scrollBehavior()});
 }
 function showError(msg,isError=true){const e=$('#err');e.textContent=msg;e.style.background=isError?'#fff1f1':'#e9f5ed';e.style.color=isError?'#9f2f2f':'#267044';e.classList.add('show')}
 function valid(){for(const n of $$('.step',$('#stepHost'))[cur].querySelectorAll('input,textarea')){if(n.name&&!n.checkValidity()){showError('Revise los campos obligatorios antes de continuar.');n.reportValidity();return false}}return true}
@@ -382,9 +392,9 @@ $('#close').onclick=()=>$('#done').close();
 
 /* ---------- admin ---------- */
 function switchView(admin){$('#customerApp').classList.toggle('hidden',admin);$('#adminApp').classList.toggle('hidden',!admin);$('#showForm').classList.toggle('active',!admin);$('#showAdmin').classList.toggle('active',admin);if(admin)checkAdminSession()}
-function goHome(){if(pendingSubmission||f.classList.contains('submitting'))return showError('Hay una solicitud pendiente de confirmar. Termine o reintente este envío antes de volver al inicio.');switchView(false);$('#formArea').classList.add('hidden');$('#picker').classList.remove('hidden');scrollTo({top:0,behavior:'smooth'})}
+function goHome(){if(pendingSubmission||f.classList.contains('submitting'))return showError('Hay una solicitud pendiente de confirmar. Termine o reintente este envío antes de volver al inicio.');switchView(false);$('#formArea').classList.add('hidden');$('#picker').classList.remove('hidden');scrollTo({top:0,behavior:scrollBehavior()})}
 $('#brandHome').onclick=e=>{e.preventDefault();goHome()};$('#footerAdmin').onclick=()=>switchView(true);
-$('#showForm').onclick=()=>{switchView(false);if(!tid)$('#ocasiones').scrollIntoView({behavior:'smooth'})};$('#showAdmin').onclick=()=>switchView(true);if(location.hash==='#admin')switchView(true);
+$('#showForm').onclick=()=>{switchView(false);if(!tid)$('#ocasiones').scrollIntoView({behavior:scrollBehavior()})};$('#showAdmin').onclick=()=>switchView(true);if(location.hash==='#admin')switchView(true);
 $('#typeFilter').innerHTML='<option value="">Todos los tipos</option>'+TEMPLATE_ORDER.map(id=>`<option value="${esc(TEMPLATES[id].name)}">${esc(TEMPLATES[id].name)}</option>`).join('');
 function authError(msg){const e=$('#authError');e.textContent=msg;e.classList.add('show')}
 $('#loginForm').onsubmit=async e=>{e.preventDefault();if(PREVIEW_MODE)return authError('Vista previa: el acceso administrativo está desactivado.');$('#authError').classList.remove('show');const {error}=await supabase.auth.signInWithPassword({email:$('#adminEmail').value,password:$('#adminPassword').value});if(error)return authError(error.message);await checkAdminSession()};
