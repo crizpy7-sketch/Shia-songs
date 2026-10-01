@@ -1,6 +1,12 @@
 # SHIA SONGS
 
-Spanish custom-song intake and administration, redesigned on an isolated local feature branch.
+English-default custom-song intake with a Spanish toggle and private administration.
+
+The current local update adds an original 3D vinyl-sleeve carousel and a once-only
+train entrance. Interface language changes preserve customer answers, selected
+options, photos, drafts and canonical backend contracts. See
+[the implementation](docs/VINYL_BILINGUAL.md) and
+[verification evidence](docs/VINYL_BILINGUAL_QA.md).
 
 ## What changed
 
@@ -41,9 +47,9 @@ npm test
 npm run test:browser
 ```
 
-`npm test` currently passes 21 checks. It uses mocked Stripe/intake clients, isolated JSDOM, and an embedded PostgreSQL engine for schema and transaction verification. It makes no live Stripe calls and creates no real Supabase orders.
+`npm test` currently passes 25 checks. It uses mocked Stripe/intake clients, isolated JSDOM, and an embedded PostgreSQL engine for schema and transaction verification, plus translation and state-preservation regression coverage. It makes no live Stripe calls and creates no real Supabase orders.
 
-`test:browser` uses the installed Chromium executable (`/usr/bin/chromium`) and blocks/mocks all external requests. It runs responsive layout, all 12 forms, mocked intake, radio-label and photo controls, accessibility scans, and a separate native-motion suite covering desktop/mobile, reduced motion, and progressive fallbacks. Chromium runs in the current cloud environment. See [local motion verification](docs/LOCAL_MOTION_QA.md) for the current results and genuine screenshots; these checks do not exercise live intake or payments.
+`test:browser` uses the installed Chromium executable (`/usr/bin/chromium`) and blocks/mocks all external requests. Its three suites check responsive layout, all 12 forms in both customer languages, mocked intake, answer/draft/photo preservation, native touch carousel scrolling, keyboard/SVG controls, accessibility scans, reduced motion, and progressive fallbacks. See [vinyl and bilingual verification](docs/VINYL_BILINGUAL_QA.md) for current results, genuine screenshots and a short motion recording; these checks do not exercise live intake or payments.
 
 ## Deployment shape
 
@@ -53,7 +59,7 @@ Read [the Stripe activation plan](docs/STRIPE_ACTIVATION.md) before enabling any
 
 ## Verification boundaries
 
-- Build succeeds; syntax checks succeed; 21 offline tests pass
+- Build succeeds; syntax checks succeed; 25 offline tests pass
 - Actual PostgreSQL DDL, atomic payment/outbox rollback, event deduplication, and restart durability pass in PGlite
 - No production database migrations, schema changes, account setup, key creation, Stripe products/prices, payments, emails, push, merge, or deployment were performed
 - Real Stripe sandbox checkout/webhook delivery, a deployed PostgreSQL role/policy setup, the live intake bridge, production fulfillment, and real-device acceptance remain activation gates

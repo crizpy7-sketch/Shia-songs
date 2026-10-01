@@ -29,8 +29,27 @@ function reveal(section) {
   seen.add(section);
   section.dataset.motionRevealed = 'true';
   observer?.unobserve(section);
-  // Animate the composition together so controls keep their spatial relationships.
-  entrance(section, { distance: 20, duration: 620 });
+  if (section.id === 'ocasiones') {
+    section.dataset.trainArrived = 'true';
+    const track = section.querySelector('#tgrid');
+    if (!preference?.matches && typeof track?.animate === 'function') {
+      const animation = track.animate([
+        { transform: 'translateX(220px)', opacity: .25 },
+        { transform: 'translateX(-5px)', opacity: 1, offset: .8 },
+        { transform: 'translateX(0)', opacity: 1 }
+      ], { duration: 840, easing: 'cubic-bezier(.16,.8,.22,1)' });
+      active.set(track, animation);
+      animation.onfinish = animation.oncancel = () => active.delete(track);
+      Array.from(track.children).slice(0, 4).forEach((card, index) => {
+        const face = card.querySelector('.sleeve-face') || card;
+        const carriage = face.animate([
+          { translate: '80px 0' }, { translate: '0 0' }
+        ], { duration: 670, delay: index * 55, easing: 'cubic-bezier(.16,.8,.22,1)', fill: 'backwards' });
+        active.set(face, carriage);
+        carriage.onfinish = carriage.oncancel = () => active.delete(face);
+      });
+    }
+  } else entrance(section, { distance: 20, duration: 620 });
 }
 
 function init() {

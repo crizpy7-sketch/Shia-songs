@@ -86,7 +86,7 @@ try{
    // visible label span. Assert BEFORE keyboard testing so Space cannot mask
    // a broken label hit target (the original interception regression).
    const input = scope.locator('input[type=radio]').and(scope.locator(`[name="${name.replaceAll('"', '\\"')}"]`)).first();
-   await input.locator('..').locator('span').click();
+   await input.locator('..').locator('span').first().click();
    assert.equal(await input.isChecked(), true, 'Visible radio label must select its input');
    await input.evaluate(el => el.checked = false);
    await input.focus();
@@ -97,8 +97,9 @@ try{
  }
 
  for(const id of templates){
-  await page.locator(`[data-t="${id}"]`).click();assert.equal(await page.locator('.step.active').count(),1);assert.equal(await page.evaluate(()=>Object.keys(localStorage).length),0);
-  if(id===templates[0]){await page.locator('#next').click();assert(await page.locator('#err').isVisible());await fillRequired();await page.locator('#save').click();assert.equal(await page.evaluate(()=>Object.keys(localStorage).length),1);await page.locator('#clearDraft').click();assert.equal(await page.evaluate(()=>Object.keys(localStorage).length),0);await page.screenshot({path:'artifacts/form-desktop.png'});}
+  console.log(`Checking baseline template ${id}`);
+  await page.locator(`[data-t="${id}"]`).click();assert(await page.locator('#formArea').isVisible(), `Opening ${id} must show form`);assert.equal(await page.locator('.step.active').count(),1);assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith("shia-form-v2:")).length),0);
+  if(id===templates[0]){await page.locator('#next').click();assert(await page.locator('#err').isVisible());await fillRequired();await page.locator('#save').click();assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith("shia-form-v2:")).length),1);await page.locator('#clearDraft').click();assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith("shia-form-v2:")).length),0);await page.screenshot({path:'artifacts/form-desktop.png'});}
   let steps=1;
   while(await page.locator('#next').isVisible()){await fillRequired();if(id===templates[0]&&await page.locator('#photoInput').isVisible())await verifyPhotoControls(page);await page.locator('#next').click();steps++;assert(steps<20);assert.equal(await page.locator('.step.active h2').evaluate(el=>el===document.activeElement),true,'Step transition must focus its heading');}
   await fillRequired();assert(await page.locator('#review').isVisible());

@@ -1,5 +1,12 @@
 # QA status · 2026-10-01
 
+Latest local candidate: `feat/vinyl-carousel-bilingual`, based on main
+`dd2e7ddec5c566f543f0018bfb4cda41f4f9e555`. Build, 25 offline checks and all three
+mocked Chromium suites pass. The new suite exercises all 12 forms in both
+languages, native touch scrolling and state preservation. See
+[VINYL_BILINGUAL_QA.md](VINYL_BILINGUAL_QA.md) for the current complete evidence;
+the earlier motion baseline below is retained as history.
+
 ## Passed
 
 - Pinned dependency installation and local Supabase browser bundle build
