@@ -1,11 +1,12 @@
 # QA status · 2026-10-01
 
-Latest local candidate: `feat/vinyl-carousel-bilingual`, based on main
-`dd2e7ddec5c566f543f0018bfb4cda41f4f9e555`. Build, 25 offline checks and all three
-mocked Chromium suites pass. The new suite exercises all 12 forms in both
-languages, native touch scrolling and state preservation. See
-[VINYL_BILINGUAL_QA.md](VINYL_BILINGUAL_QA.md) for the current complete evidence;
-the earlier motion baseline below is retained as history.
+Latest local candidate: `feat/hero-motion-occasion-refresh`, based on main
+`d3b1b69d2c5d629c6d5a156431483dd3cd246e6f`. Build and 28 offline checks pass;
+final four-suite mocked Chromium regression: all four suites pass (complete command exit 0). See
+[HERO_REFINEMENT_QA.md](HERO_REFINEMENT_QA.md) for current executed evidence and
+limitations, [HERO_REFINEMENT.md](HERO_REFINEMENT.md) for behavior, and
+[OCCASION_PHOTO_CREDITS.json](OCCASION_PHOTO_CREDITS.json) for the twelve verified
+new photo mappings. Prior vinyl and motion reports below are retained as history.
 
 ## Passed
 
