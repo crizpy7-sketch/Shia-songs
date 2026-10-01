@@ -3,3 +3,28 @@
 /* Reading and form controls stay comfortable while display type carries the hierarchy. */
 .hero-description{font-size:16px}.process-list p,.section-heading>p{font-size:14px}.section-intro>p:last-child{font-size:15px}.eyebrow{font-size:11px!important}.tcard small{font-size:12px}.price-card li{font-size:14px}.pricing-note{font-size:12px}.faq-list summary{font-size:15px}.faq-list p{font-size:14px}.head p{font-size:14px}label,legend{font-size:14px}input,textarea{font-size:14px}.choice span{font-size:14px}.draft-note{font-size:12px}.note{font-size:14px}.meta{font-size:12px}.row,.file{font-size:14px}.row b{font-size:12px}.upload small{font-size:12px}.count{font-size:13px}.count span{font-size:12px}.auth-card p{font-size:14px}.toolbar select,.toolbar input,.order-card select{font-size:14px}.error{font-size:14px}.pricing-section .plan-label{font-size:10px}.price span{font-size:12px}.dialog-footnote{font-size:12px!important}
 @media(max-width:760px){.hero-description{font-size:15px}.hero .eyebrow,.eyebrow{font-size:10px!important}.hero-detail{font-size:11px}.section-intro>p:last-child,.process-list p,.section-heading>p{font-size:14px}.tcard small{font-size:12px}.pricing-note{font-size:12px}.faq-list summary{font-size:14px}.head p{font-size:14px}.draft-note{font-size:11px}.actions .btn{font-size:12px}.story-quote .eyebrow{font-size:9px!important}.story-quote>span{font-size:11px}}
+
+/* Motion and control polish: layout and visibility always work without JavaScript. */
+.story-quote .eyebrow,.story-quote>span,.premium .plan-label,.premium .price span{color:#48543e}
+.ui-icon{display:inline-block;width:18px;height:18px;flex:none;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.navbtn .ui-icon,.hero-link .ui-icon{margin-left:12px}
+.occasion-top .ui-icon{width:20px;height:20px}
+.count .ui-icon{width:14px;height:14px}
+.btn,.navbtn,.hero-link{transition:background-color .18s ease,color .18s ease,box-shadow .18s ease,transform .22s cubic-bezier(.22,1,.36,1)}
+.btn:active:not(:disabled),.navbtn:active{transform:translateY(1px)}
+.hero-link:hover .ui-icon,.navbtn:hover .ui-icon,.btn:hover .ui-icon{transform:translate(2px,-2px)}
+.hero-link .ui-icon,.navbtn .ui-icon,.btn .ui-icon{transition:transform .22s cubic-bezier(.22,1,.36,1)}
+.hero-link:hover .ui-icon{transform:translateY(3px)}
+.bar{transition:width .28s cubic-bezier(.22,1,.36,1)}
+/* Keep native radios in the keyboard order while the entire label is clickable. */
+.choice{position:relative;display:block;cursor:pointer}
+.choice input{width:1px;height:1px;padding:0;margin:0;border:0;left:0;top:50%;overflow:hidden;clip-path:inset(50%);pointer-events:none}
+.choice span{transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease}
+.thumb .tb{gap:4px;padding:6px 4px 0;flex-wrap:wrap}
+.thumb .num{width:100%;min-width:12px;font-size:10px}
+.thumb .tb button{display:grid;place-items:center;min-width:44px;width:44px;height:44px;flex:none;border-radius:5px}
+.thumb .tb button .ui-icon{width:18px;height:18px}
+.thumb .tb button:hover:not(:disabled){background:#e4eada;border-color:#617b50}
+@media(hover:hover){.navbtn:hover{box-shadow:0 3px 10px #171d2010}.tcard:hover .ui-icon{transform:translate(2px,-2px)}.tcard .ui-icon{transition:transform .22s ease}}
+@media(max-width:380px){.thumb .tb{flex-wrap:wrap}.thumb .num{width:100%}.thumb .tb .rm{margin-left:0}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn,.navbtn,.hero-link,.ui-icon,.choice span,.bar,.tcard .ui-icon{transition:none!important}.btn:hover,.btn:active,.navbtn:active,.tcard:hover,.tcard:focus-visible,.hero-link:hover .ui-icon,.navbtn:hover .ui-icon,.btn:hover .ui-icon,.tcard:hover .ui-icon{transform:none!important}}

@@ -22,17 +22,17 @@
 
 ## Not yet verified
 
-- Desktop/mobile screenshot/layout review, actual browser interactivity, keyboard navigation, browser image loading and axe scans
+- Physical-device acceptance and browser engines other than the tested Chromium
 - A real Stripe sandbox session and webhook delivery
 - A deployed PostgreSQL role/policy/network/backup configuration
 - Existing live intake bridge, idempotent finalize/resume, and actual fulfillment worker
 - Production behavior or live payment processing
 
-## Browser environment blocker
+## Local browser verification update
 
-The installed Chromium exits because the environment refuses its required process socket. A scoped escalation was attempted and did not change that restriction. The managed cloud browser rejects the local preview URL with `ERR_BLOCKED_BY_CLIENT`. The available Sites profile is portable with no supported local forwarding tool. No unsupported bypass, public deployment, or fabricated screenshots were used.
+Chromium now runs in the existing cloud environment without a permissions change. The local feature branch fixes the lazy-image test and contained radio-label hit targets, and adds original native motion. See [LOCAL_MOTION_QA.md](LOCAL_MOTION_QA.md) for current browser results and screenshot evidence. The earlier process-socket blocker does not apply to this instance.
 
-`tests/browser.mjs` is included for a supported browser environment. It intends to check 1440, 768, 390, and 320-pixel viewports, screenshots, image loading, no horizontal overflow, all 12 templates, mocked submission, admin sign-in surface, browser errors, and axe accessibility. It has not reached execution in the current environment.
+`npm run test:browser` runs `tests/browser.mjs` and `tests/motion-browser.mjs` against temporary local servers. All external requests are mocked or blocked. It checks 1440, 768, 390, and 320-pixel layouts, visible lazy-image loading, all 12 forms, mocked submission/finalization, photo controls, keyboard access, axe accessibility, once-only motion, initial/dynamic reduced motion, and unavailable-API/module and JavaScript-disabled fallbacks. Production gates remain unchanged.
 
 ## Safe visual preview
 

@@ -43,7 +43,7 @@ npm run test:browser
 
 `npm test` currently passes 21 checks. It uses mocked Stripe/intake clients, isolated JSDOM, and an embedded PostgreSQL engine for schema and transaction verification. It makes no live Stripe calls and creates no real Supabase orders.
 
-`test:browser` uses the installed Chromium executable (`/usr/bin/chromium`) and blocks/mocks all external requests. Browser launch is blocked in the current cloud execution environment by its process-socket restriction. Thus desktop/mobile rendering, browser interactions, and automated accessibility scans are **not yet verified**. This limitation is not evidence of a broken site; it is a remaining QA gate. No screenshots were fabricated.
+`test:browser` uses the installed Chromium executable (`/usr/bin/chromium`) and blocks/mocks all external requests. It runs responsive layout, all 12 forms, mocked intake, radio-label and photo controls, accessibility scans, and a separate native-motion suite covering desktop/mobile, reduced motion, and progressive fallbacks. Chromium runs in the current cloud environment. See [local motion verification](docs/LOCAL_MOTION_QA.md) for the current results and genuine screenshots; these checks do not exercise live intake or payments.
 
 ## Deployment shape
 
@@ -56,7 +56,7 @@ Read [the Stripe activation plan](docs/STRIPE_ACTIVATION.md) before enabling any
 - Build succeeds; syntax checks succeed; 21 offline tests pass
 - Actual PostgreSQL DDL, atomic payment/outbox rollback, event deduplication, and restart durability pass in PGlite
 - No production database migrations, schema changes, account setup, key creation, Stripe products/prices, payments, emails, push, merge, or deployment were performed
-- Real Stripe sandbox checkout/webhook delivery, a deployed PostgreSQL role/policy setup, the live intake bridge, production fulfillment, and visual/browser QA remain activation gates
+- Real Stripe sandbox checkout/webhook delivery, a deployed PostgreSQL role/policy setup, the live intake bridge, production fulfillment, and real-device acceptance remain activation gates
 - The existing live intake is not idempotent and consumes its submission token on finalize. The UI reuses a known pending order and uploaded-file manifest for retries, but a lost response before the browser receives an order ID or a finalized response still requires reconciliation. The backend must gain an approved idempotent resume/finalize contract before payment launch
 
 Photo sources and licenses are recorded in [PHOTO_CREDITS.md](docs/PHOTO_CREDITS.md) and on the visible credits page.
