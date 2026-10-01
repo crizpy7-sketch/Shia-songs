@@ -2,12 +2,25 @@
 import { createClient } from './vendor/supabase.js';
 import { createPaymentUI } from './payments.js';
 import { validateUpload } from './upload-policy.js';
+import { t, applyTranslations, TRANSLATIONS } from './i18n.js';
 const PREVIEW_MODE=false;
 const SUPABASE_URL="https://bjnkgxkcbbnbtazelsjs.supabase.co";
 const SUPABASE_KEY="sb_publishable_F49fzNl_CTWUdJy5ZdMDMw_MFrIOXw-";
 const EDGE_URL=`${SUPABASE_URL}/functions/v1/shia-order-intake`;
 const supabase=PREVIEW_MODE?null:createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=s=>document.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)], esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+
+// Mark generated interface text only. User values, canonical names and IDs are untouched.
+const localized=(source,params={})=>`<span data-i18n="${esc(source)}" data-i18n-params="${esc(JSON.stringify(params))}">${esc(t(source,params))}</span>`;
+function setText(element,source,params={}){element.dataset.i18n=source;element.dataset.i18nParams=JSON.stringify(params);element.textContent=t(source,params)}
+function localizeMarkup(html){
+  const template=document.createElement('template');template.innerHTML=html;
+  const walker=document.createTreeWalker(template.content,NodeFilter.SHOW_TEXT),nodes=[];
+  while(walker.nextNode())nodes.push(walker.currentNode);
+  for(const node of nodes){const source=node.textContent.trim();if(source&&Object.hasOwn(TRANSLATIONS,source)&&!node.parentElement.closest('[data-i18n],textarea')){const span=document.createElement('span');span.dataset.i18n=source;span.textContent=t(source);node.replaceWith(span)}}
+  for(const element of template.content.querySelectorAll('[placeholder],[aria-label],[title]'))for(const attr of ['placeholder','aria-label','title']){const source=element.getAttribute(attr);if(source&&Object.hasOwn(TRANSLATIONS,source)){element.setAttribute(`data-i18n-${attr}`,source);element.setAttribute(attr,t(source))}}
+  return template.innerHTML;
+}
 
 
 // Motion is optional: core forms also work if its separate module fails to load.
@@ -213,19 +226,20 @@ $$('[data-plan]').forEach(a=>a.onclick=()=>{selectedPlan=a.dataset.plan});
 $('#year').textContent=new Date().getFullYear();
 
 /* ---------- template picker ---------- */
-$('#tgrid').innerHTML=TEMPLATE_ORDER.map((id,i)=>{const t=TEMPLATES[id];return `<button type="button" class="tcard" data-t="${id}"><span class="occasion-top"><span class="occasion-num">${String(i+1).padStart(2,'0')}</span>${icon('arrow')}</span><b>${esc(t.name)}</b><small>${esc(t.blurb)}</small></button>`}).join('');
+$('#tgrid').innerHTML=TEMPLATE_ORDER.map((id,i)=>{const t=TEMPLATES[id];return `<button type="button" class="tcard record-sleeve" data-t="${id}"><span class="sleeve-face"><span class="sleeve-disc" aria-hidden="true"></span><img class="sleeve-photo" src="assets/photos/${['couple','embrace','music','embrace','listener','couple','embrace','listener','couple','music','listener','music'][i]}.webp" alt="" loading="lazy"><span class="sleeve-number">${String(i+1).padStart(2,'0')}</span><span class="sleeve-copy"><b>${localized(t.name)}</b><small>${localized(t.blurb)}</small></span></span></button>`}).join('');
 $$('.tcard').forEach(b=>b.onclick=()=>chooseTemplate(b.dataset.t));
 
 function chooseTemplate(id){
   if(pendingSubmission||f.classList.contains('submitting'))return showError('Hay una solicitud pendiente de confirmar. Termine o reintente este envío antes de comenzar otra historia.');
   tid=id;T=TEMPLATES[id];steps=[...T.steps,PHOTOS_STEP,REVIEW_STEP];
-  $('#formTitle').textContent=T.title;
-  $('#formBlurb').textContent=T.blurbLong||'Complete el formulario paso a paso. Sus respuestas y archivos se enviarán de forma privada a Shia Songs.';
-  $('#formBadge').textContent=T.name;
+  setText($('#formTitle'),T.title);
+  setText($('#formBlurb'),T.blurbLong||'Complete el formulario paso a paso. Sus respuestas y archivos se enviarán de forma privada a Shia Songs.');
+  setText($('#formBadge'),T.name);
   try{draftEnabled=!!localStorage.getItem(storageKey(tid));}catch{draftEnabled=false;}
   pendingSubmission=null;
-  $('#stepHost').innerHTML=steps.map(stepHTML).join('');
+  $('#stepHost').innerHTML=localizeMarkup(steps.map(stepHTML).join(''));
   bindPhotoStep();resetPhotos();restore();
+  const savedPackage=f.querySelector('[name="Paquete"]:checked');if(savedPackage)selectedPlan=savedPackage.value;
   $$('[name="Paquete"]').forEach(r=>{r.checked=r.value===selectedPlan;r.onchange=()=>selectedPlan=r.value});cur=0;
   $('#picker').classList.add('hidden');$('#formArea').classList.remove('hidden');
   ui();
@@ -277,7 +291,15 @@ function bindPhotoStep(){
   $('#extraInput').onchange=e=>{addExtras(e.target.files);e.target.value=''};
 }
 function resetPhotos(){photos.forEach(p=>URL.revokeObjectURL(p.url));photos=[];extras=[];renderPhotos();renderExtras()}
-function rejectFile(file,kind){const error=validateUpload(file,kind,photos.length+extras.length);if(error){showError(error);return true}return false}
+function rejectFile(file,kind){
+  const error=validateUpload(file,kind,photos.length+extras.length);if(!error)return false;
+  let source=error,params={name:file.name};
+  if(photos.length+extras.length>=20)source=error;
+  else if(!file.size)source='"{name}" está vacío y no se puede subir.';
+  else if(file.size>50*1024*1024)source='"{name}" pesa más de 50 MB y no se puede subir.';
+  else source=kind==='photo'?'"{name}" no tiene un formato compatible. Use JPG, PNG, WebP o HEIC.':'"{name}" no tiene un formato compatible. Use MP4 o MOV.';
+  showError(source);setText($('#err'),source,params);return true;
+}
 function addPhotos(list){
   for(const file of list){
     if(rejectFile(file,'photo'))continue;
@@ -296,18 +318,18 @@ function addExtras(list){
 }
 function renderPhotos(){
   const host=$('#thumbs');if(!host)return;
-  host.innerHTML=photos.map((p,i)=>`<div class="thumb"><img src="${p.url}" alt="Foto ${i+1}"><div class="tb"><span class="num">${i+1}</span><button type="button" data-up="${i}" aria-label="Mover foto ${i+1} antes"${i?'':' disabled'}>${icon('up')}</button><button type="button" data-down="${i}" aria-label="Mover foto ${i+1} después"${i===photos.length-1?' disabled':''}>${icon('down')}</button><button type="button" class="rm" data-rm="${i}" aria-label="Quitar foto ${i+1}">${icon('remove')}</button></div><input class="cap" data-cap="${i}" aria-label="Descripción de la foto ${i+1}" placeholder="¿Qué momento es?" value="${esc(p.caption)}"></div>`).join('');
+  host.innerHTML=photos.map((p,i)=>`<div class="thumb"><img src="${p.url}" alt="${esc(t('Foto {number}',{number:i+1}))}" data-i18n-alt="Foto {number}" data-i18n-params="${esc(JSON.stringify({number:i+1}))}"><div class="tb"><span class="num">${i+1}</span><button type="button" data-up="${i}" aria-label="${esc(t('Mover foto {number} antes',{number:i+1}))}" data-i18n-aria-label="Mover foto {number} antes" data-i18n-params="${esc(JSON.stringify({number:i+1}))}"${i?'':' disabled'}>${icon('up')}</button><button type="button" data-down="${i}" aria-label="${esc(t('Mover foto {number} después',{number:i+1}))}" data-i18n-aria-label="Mover foto {number} después" data-i18n-params="${esc(JSON.stringify({number:i+1}))}"${i===photos.length-1?' disabled':''}>${icon('down')}</button><button type="button" class="rm" data-rm="${i}" aria-label="${esc(t('Quitar foto {number}',{number:i+1}))}" data-i18n-aria-label="Quitar foto {number}" data-i18n-params="${esc(JSON.stringify({number:i+1}))}">${icon('remove')}</button></div><input class="cap" data-cap="${i}" aria-label="${esc(t('Descripción de la foto {number}',{number:i+1}))}" data-i18n-aria-label="Descripción de la foto {number}" data-i18n-params="${esc(JSON.stringify({number:i+1}))}" placeholder="${esc(t('¿Qué momento es?'))}" data-i18n-placeholder="¿Qué momento es?" value="${esc(p.caption)}"></div>`).join('');
   const mb=photos.reduce((n,p)=>n+p.file.size,0)/1048576;
-  $('#photoCount').textContent=photos.length?`${photos.length} ${photos.length===1?'foto':'fotos'} · ${mb.toFixed(1)} MB`:'Sin fotos todavía';
+  setText($('#photoCount'),photos.length?(photos.length===1?'{count} foto · {mb} MB':'{count} fotos · {mb} MB'):'Sin fotos todavía',{count:photos.length,mb:mb.toFixed(1)});
   $$('[data-up]',host).forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
   $$('[data-down]',host).forEach(b=>b.onclick=()=>move(+b.dataset.down,1));
-  $$('[data-rm]',host).forEach(b=>b.onclick=()=>{const i=+b.dataset.rm;URL.revokeObjectURL(photos[i].url);photos.splice(i,1);renderPhotos()});
+  $$('[data-rm]',host).forEach(b=>b.onclick=()=>{const i=+b.dataset.rm;URL.revokeObjectURL(photos[i].url);photos.splice(i,1);renderPhotos();const next=host.querySelector(`[data-rm="${Math.min(i,photos.length-1)}"]`);(next||$('#photoInput')).focus()});
   $$('[data-cap]',host).forEach(inp=>inp.oninput=()=>{photos[+inp.dataset.cap].caption=inp.value});
 }
-function move(i,d){const j=i+d;if(j<0||j>=photos.length)return;[photos[i],photos[j]]=[photos[j],photos[i]];renderPhotos()}
+function move(i,d){const j=i+d;if(j<0||j>=photos.length)return;[photos[i],photos[j]]=[photos[j],photos[i]];renderPhotos();$('#thumbs').querySelector(`[data-${d<0?'up':'down'}="${j}"]`)?.focus()}
 function renderExtras(){
   const host=$('#extraFiles');if(!host)return;
-  host.innerHTML=extras.map((x,i)=>`<div class="file">${esc(x.name)} · ${(x.size/1048576).toFixed(1)} MB <button type="button" class="btn ghost" data-xrm="${i}" style="float:right;padding:4px 9px">Quitar</button></div>`).join('');
+  host.innerHTML=extras.map((x,i)=>`<div class="file">${esc(x.name)} · ${(x.size/1048576).toFixed(1)} MB <button type="button" class="btn ghost" data-xrm="${i}" style="float:right;padding:4px 9px">${localized('Quitar')}</button></div>`).join('');
   $$('[data-xrm]',host).forEach(b=>b.onclick=()=>{extras.splice(+b.dataset.xrm,1);renderExtras()});
 }
 const slideshowSummary=()=>photos.map((p,i)=>`${i+1}. ${p.file.name}${p.caption?` — ${p.caption}`:''}`).join('\n');
@@ -317,18 +339,19 @@ function formDataObject(){const d={};new FormData(f).forEach((v,k)=>d[k]=v);retu
 function save(msg=false){if(!tid)return;if(msg)draftEnabled=true;if(!draftEnabled)return;try{localStorage.setItem(storageKey(tid),JSON.stringify(formDataObject()));if(msg)showError('Borrador guardado en este dispositivo. Puede borrarlo cuando quiera.',false)}catch{showError('Este navegador no pudo guardar el borrador. Mantenga la página abierta.')}}
 $('#clearDraft').onclick=()=>{if(tid)try{localStorage.removeItem(storageKey(tid));}catch{}draftEnabled=false;showError('El borrador guardado se borró. Sus respuestas actuales siguen aquí.',false)};
 function restore(){try{const d=JSON.parse(localStorage.getItem(storageKey(tid))||'{}');Object.entries(d).forEach(([k,v])=>$$(`[name="${CSS.escape(k)}"]`).forEach(n=>{if(['radio','checkbox'].includes(n.type))n.checked=n.value===v;else n.value=v}))}catch{}}
+function enumAnswer(key,value){if(key==='Paquete'&&['songs','slideshow'].includes(value))return localized(value==='songs'?'Dos canciones + letras · $20 USD':'Dos canciones + letras + video · $50 USD');const field=T.steps.flatMap(step=>step.f).find(field=>field.n===key&&field.t==='radio');return field?.o.includes(value)?localized(value):esc(value)}
 function review(){
   const d=formDataObject();
-  const rows=Object.entries(d).filter(([k,v])=>k!=='Confirmación'&&String(v).trim()).map(([k,v])=>`<div class="row"><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join('');
-  const pics=photos.length?`<div class="row"><b>Fotos para el slideshow (${photos.length})</b><span>${esc(slideshowSummary())}</span></div>`:'';
-  const vids=extras.length?`<div class="row"><b>Videos de referencia</b><span>${esc(extras.map(x=>x.name).join(', '))}</span></div>`:'';
-  $('#review').innerHTML=`<div class="row"><b>Tipo de canción</b><span>${esc(T.name)}</span></div>`+rows+pics+vids;
+  const rows=Object.entries(d).filter(([k,v])=>k!=='Confirmación'&&String(v).trim()).map(([k,v])=>`<div class="row"><b>${localized(k)}</b><span>${enumAnswer(k,v)}</span></div>`).join('');
+  const pics=photos.length?`<div class="row"><b>${localized('Fotos para el slideshow ({count})',{count:photos.length})}</b><span>${esc(slideshowSummary())}</span></div>`:'';
+  const vids=extras.length?`<div class="row"><b>${localized('Videos de referencia')}</b><span>${esc(extras.map(x=>x.name).join(', '))}</span></div>`:'';
+  $('#review').innerHTML=`<div class="row"><b>${localized('Tipo de canción')}</b><span>${localized(T.name)}</span></div>`+rows+pics+vids;
 }
 function ui(){
   const nodes=$$('.step',$('#stepHost'));
   nodes.forEach((s,i)=>s.classList.toggle('active',i===cur));
   const p=Math.round((cur+1)/steps.length*100);
-  $('#sl').textContent=`Paso ${cur+1} de ${steps.length}`;$('#pc').textContent=p+'%';$('#bar').style.width=p+'%';
+  setText($('#sl'),'Paso {current} de {total}',{current:cur+1,total:steps.length});$('#pc').textContent=p+'%';$('#bar').style.width=p+'%';
   $('.track').setAttribute('aria-valuenow',p);
   nodes[cur]?.querySelector('h2')?.focus({preventScroll:true});
   animateStep(nodes[cur]);
@@ -340,8 +363,8 @@ function ui(){
   if(cur===steps.length-1)review();
   scrollTo({top:0,behavior:scrollBehavior()});
 }
-function showError(msg,isError=true){const e=$('#err');e.textContent=msg;e.style.background=isError?'#fff1f1':'#e9f5ed';e.style.color=isError?'#9f2f2f':'#267044';e.classList.add('show')}
-function valid(){for(const n of $$('.step',$('#stepHost'))[cur].querySelectorAll('input,textarea')){if(n.name&&!n.checkValidity()){showError('Revise los campos obligatorios antes de continuar.');n.reportValidity();return false}}return true}
+function showError(msg,isError=true){const e=$('#err');setText(e,msg);e.style.background=isError?'#fff1f1':'#e9f5ed';e.style.color=isError?'#9f2f2f':'#267044';e.classList.add('show')}
+function valid(){for(const n of $$('.step',$('#stepHost'))[cur].querySelectorAll('input,textarea')){if(n.name&&!n.checkValidity()){showError('Revise los campos obligatorios antes de continuar.');n.focus();return false}}return true}
 $('#next').onclick=()=>{if(valid()){save();cur++;ui()}};
 $('#back').onclick=()=>{if(cur){cur--;ui()}};
 $('#save').onclick=()=>save(true);
@@ -351,7 +374,7 @@ f.addEventListener('input',()=>save());
 async function callIntake(body){if(PREVIEW_MODE)throw new Error('Vista previa: no se envían solicitudes ni archivos.');const res=await fetch(EDGE_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify(body)});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'No se pudo enviar la solicitud.');return data}
 f.onsubmit=async e=>{
   e.preventDefault();if(!valid())return;
-  const submit=$('#submit');submit.textContent='Enviando…';f.classList.add('submitting');
+  const submit=$('#submit');setText(submit,'Enviando…');f.classList.add('submitting');
   try{
     const a=formDataObject();
     a['Tipo de canción']=T.name;
@@ -369,7 +392,7 @@ f.onsubmit=async e=>{
       emotion:a['Emoción']||null,answers:{...a,'Paquete elegido':selectedPlan==='slideshow'?'Canciones + video · $50 USD':'Canciones + letras · $20 USD'},files:fileMeta});
     if(!pendingSubmission){pendingSubmission={created,upload,manifest:[],plan:selectedPlan,photos:photos.map(p=>({caption:p.caption}))};
       $$('input,textarea',f).forEach(n=>n.disabled=true);$('#back').disabled=true;$('#save').disabled=true;}
-    if(created.uploads.length!==pendingSubmission.upload.length)throw new Error('El servidor no aceptó todos los archivos. No se confirmó la solicitud. Conserve este número para consultar: '+created.order_number);
+    if(created.uploads.length!==pendingSubmission.upload.length)throw Object.assign(new Error('El servidor no aceptó todos los archivos. No se confirmó la solicitud. Conserve este número para consultar: {number}'),{i18nParams:{number:created.order_number}});
     const manifest=pendingSubmission.manifest;
     for(let i=manifest.length;i<created.uploads.length;i++){
       const u=created.uploads[i],file=pendingSubmission.upload[i],isPhoto=i<pendingSubmission.photos.length;
@@ -382,11 +405,11 @@ f.onsubmit=async e=>{
     await paymentUI.setOrder({orderId:created.order_id,token:final.payment_token,packageKey:pendingSubmission.plan});
     pendingSubmission=null;
     try{localStorage.removeItem(storageKey(tid));}catch{}
-    $('#doneMessage').textContent=`Su número de solicitud es #${final.order_number}. Guárdelo para referencia.`;
+    setText($('#doneMessage'),'Su número de solicitud es #{number}. Guárdelo para referencia.',{number:final.order_number});
     $('#done').showModal();
     $$('input,textarea',f).forEach(n=>n.disabled=false);$('#back').disabled=false;$('#save').disabled=false;f.reset();resetPhotos();cur=0;ui();
-  }catch(err){showError((err.message||'Ocurrió un error al enviar.')+(pendingSubmission?' Conserve el número de solicitud '+(pendingSubmission.created.order_number||pendingSubmission.created.order_id)+'. No cree una segunda solicitud si ya se envió; reintentar solo continúa esta solicitud.':''))}
-  finally{submit.textContent='Enviar formulario';f.classList.remove('submitting')}
+  }catch(err){const source=Object.hasOwn(TRANSLATIONS,err.message)?err.message:'Ocurrió un error al enviar.';showError(source);const errorHost=$('#err');errorHost.removeAttribute('data-i18n');errorHost.innerHTML=localized(source,err.i18nParams||{})+(pendingSubmission?' '+localized('Conserve el número de solicitud {number}. No cree una segunda solicitud si ya se envió; reintentar solo continúa esta solicitud.',{number:pendingSubmission.created.order_number||pendingSubmission.created.order_id}):'')}
+  finally{setText(submit,'Enviar formulario');f.classList.remove('submitting')}
 };
 $('#close').onclick=()=>$('#done').close();
 
@@ -430,3 +453,6 @@ async function showGallery(id){
 }
 async function saveOrder(id){const status=$(`#status-${id}`).value,internal_notes=$(`#notes-${id}`).value;const {error}=await supabase.from('shia_song_orders').update({status,internal_notes}).eq('id',id);if(error)return alert(error.message);const o=orders.find(x=>x.id===id);if(o){o.status=status;o.internal_notes=internal_notes}renderStats();alert('Cambios guardados.')}
 async function openFile(e,path){e.preventDefault();const {data,error}=await supabase.storage.from('shia-song-uploads').createSignedUrl(path,300);if(error)return alert(error.message);window.open(data.signedUrl,'_blank','noopener,noreferrer')}
+
+$('#adminApp').setAttribute('lang','es');
+applyTranslations();

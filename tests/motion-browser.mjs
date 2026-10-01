@@ -47,7 +47,7 @@ async function makePage(options = {}, unavailable = []) {
 }
 
 async function visibleContent(page) {
-  assert.equal(await page.locator('html').getAttribute('lang'), 'es');
+  assert.equal(await page.locator('html').getAttribute('lang'), 'en');
   assert(await page.locator('#heroTitle').isVisible());
   assert.match(await page.locator('.price-card').nth(0).innerText(), /\$20/);
   assert.match(await page.locator('.price-card').nth(1).innerText(), /\$50/);
@@ -73,10 +73,12 @@ try {
     await page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running'));
     assert.equal(await page.locator('[data-motion-revealed="true"]').count(), 6);
     const firstCount = await page.evaluate(() => window.__motionCalls.filter(call => call.section).length);
-    assert.equal(firstCount, 6);
+    assert.equal(firstCount, 5);
+    assert.equal(await page.evaluate(() => window.__motionCalls.filter(call => call.duration===840).length),1, "One train entrance executes");
     await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
     for (const section of await page.locator(sections).all()) await section.scrollIntoViewIfNeeded();
     assert.equal(await page.evaluate(() => window.__motionCalls.filter(call => call.section).length), firstCount, 'Sections animate once even after revisit');
+    assert.equal(await page.evaluate(() => window.__motionCalls.filter(call => call.duration===840).length),1,'Train must not loop on revisit');
     await visibleContent(page);
     await page.locator('[data-t="aniversario"]').click();
     assert.equal(await page.locator('.step.active h2').evaluate(el => el === document.activeElement), true, 'Opening form focuses its first heading');
@@ -139,8 +141,10 @@ try {
   const noJS = await makePage({ javaScriptEnabled: false });
   await noJS.goto(origin, { waitUntil: 'networkidle' });
   await visibleContent(noJS);
-  assert.match(await noJS.locator('noscript').innerText(), /Active JavaScript/);
-  await noJS.getByRole('link', { name: 'Ver paquetes' }).click();
+  assert.match(await noJS.locator('noscript').innerText(), /Enable JavaScript/);
+  assert.equal(await noJS.locator('.tcard').count(),12);
+  for(const card of await noJS.locator('.tcard').all())assert(await card.innerText(), 'No-JavaScript sleeve content is visible');
+  await noJS.getByRole('link', { name: 'View packages' }).click();
   assert.equal(new URL(noJS.url()).hash, '#paquetes');
   await noJS.locator('.faq-list summary').first().click();
   assert.equal(await noJS.locator('.faq-list details').first().getAttribute('open'), '');
