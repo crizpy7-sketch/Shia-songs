@@ -3,6 +3,7 @@ import { createClient } from './vendor/supabase.js';
 import { createPaymentUI } from './payments.js';
 import { validateUpload } from './upload-policy.js';
 import { t, applyTranslations, TRANSLATIONS } from './i18n.js';
+import { OCCASION_PHOTOS } from './occasion-photos.js';
 const PREVIEW_MODE=false;
 const SUPABASE_URL="https://bjnkgxkcbbnbtazelsjs.supabase.co";
 const SUPABASE_KEY="sb_publishable_F49fzNl_CTWUdJy5ZdMDMw_MFrIOXw-";
@@ -225,8 +226,9 @@ const paymentUI=createPaymentUI({button:$('#checkoutButton'),panel:$('#paymentPa
 $$('[data-plan]').forEach(a=>a.onclick=()=>{selectedPlan=a.dataset.plan});
 $('#year').textContent=new Date().getFullYear();
 
+const tPhoto=photo=>t(photo.alt_es);
 /* ---------- template picker ---------- */
-$('#tgrid').innerHTML=TEMPLATE_ORDER.map((id,i)=>{const t=TEMPLATES[id];return `<button type="button" class="tcard record-sleeve" data-t="${id}"><span class="sleeve-face"><span class="sleeve-disc" aria-hidden="true"></span><img class="sleeve-photo" src="assets/photos/${['couple','embrace','music','embrace','listener','couple','embrace','listener','couple','music','listener','music'][i]}.webp" alt="" loading="lazy"><span class="sleeve-number">${String(i+1).padStart(2,'0')}</span><span class="sleeve-copy"><b>${localized(t.name)}</b><small>${localized(t.blurb)}</small></span></span></button>`}).join('');
+$('#tgrid').innerHTML=TEMPLATE_ORDER.map((id,i)=>{const t=TEMPLATES[id],photo=OCCASION_PHOTOS[id];return `<button type="button" class="tcard record-sleeve" data-t="${id}"><span class="sleeve-face"><span class="sleeve-disc" aria-hidden="true"></span><img class="sleeve-photo" src="${photo.src}" width="${photo.width}" height="${photo.height}" alt="${esc(tPhoto(photo))}" data-i18n-alt="${esc(photo.alt_es)}" loading="lazy" decoding="async" style="object-position:${photo.position}"><span class="sleeve-number">${String(i+1).padStart(2,'0')}</span><span class="sleeve-copy"><b>${localized(t.name)}</b><small>${localized(t.blurb)}</small></span></span></button>`}).join('');
 $$('.tcard').forEach(b=>b.onclick=()=>chooseTemplate(b.dataset.t));
 
 function chooseTemplate(id){

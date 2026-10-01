@@ -1,4 +1,5 @@
 /* Native, finite motion. Content never depends on an animation to become visible. */
+import { initHeroMotion } from './hero-motion.js';
 const preference = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
 const active = new Map();
 const seen = new WeakSet();
@@ -57,6 +58,7 @@ function init() {
     entrance(element, { delay: index * 45, distance: 14, duration: 520 });
   });
   entrance(document.querySelector('.hero-visual'), { delay: 80, distance: 20, duration: 680 });
+  initHeroMotion();
   const sections = document.querySelectorAll('.process-section, .story-band, .occasions-section, .pricing-section, .faq-section, .closing-section');
   if (!preference?.matches && typeof IntersectionObserver === 'function') {
     observer = new IntersectionObserver(entries => {
