@@ -1,0 +1,2 @@
+# Vendored build output includes template-string whitespace; review its pinned source/lockfile.
+assets/js/vendor/supabase.js -diff

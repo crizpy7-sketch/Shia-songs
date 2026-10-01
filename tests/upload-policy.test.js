@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import { validateUpload,MAX_BYTES } from '../assets/js/upload-policy.js';
+const file=(type,size=1024)=>({name:'fixture',type,size});
+test('Only formats accepted by BOTH intake and private bucket are offered',()=>{for(const type of ['image/jpeg','image/png','image/webp','image/heic'])assert.equal(validateUpload(file(type),'photo',0),null);for(const type of ['video/mp4','video/quicktime'])assert.equal(validateUpload(file(type),'video',0),null);for(const type of ['image/heif','image/svg+xml','image/gif','audio/mp3','audio/mpeg','audio/mp4'])assert.match(validateUpload(file(type),'photo',0),/formato compatible/);});
+test('20 total files, 50 MB per file, no empty files',()=>{assert.equal(validateUpload(file('image/jpeg',MAX_BYTES),'photo',19),null);assert.match(validateUpload(file('image/jpeg'),'photo',20),/20 archivos/);assert.match(validateUpload(file('image/jpeg',MAX_BYTES+1),'photo',1),/50 MB/);assert.match(validateUpload(file('image/jpeg',0),'photo',0),/vacío/);});
