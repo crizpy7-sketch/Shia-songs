@@ -3,8 +3,12 @@ import { PaymentError } from './payments.js';
 export class PostgresStore{
   constructor(connectionString,{pool}={}){this.pool=pool||new pg.Pool({connectionString,max:8,connectionTimeoutMillis:5000});}
   async close(){await this.pool.end();}
-  async provision({orderId,packageKey,tokenHash}){
-    const result=await this.pool.query(`INSERT INTO shia_payments.orders(order_id,package_key,token_hash,token_expires_at) VALUES($1,$2,$3,now()+interval '30 days') ON CONFLICT(order_id) DO UPDATE SET order_id=EXCLUDED.order_id WHERE shia_payments.orders.package_key=EXCLUDED.package_key AND shia_payments.orders.token_hash=EXCLUDED.token_hash RETURNING order_id`,[orderId,packageKey,tokenHash]);
+  async transaction(fn){
+    const client=await this.pool.connect();
+    try{await client.query('BEGIN');const result=await fn(client);await client.query('COMMIT');return result;}catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+  }
+  async provision({orderId,packageKey,tokenHash},client=this.pool){
+    const result=await client.query(`INSERT INTO shia_payments.orders(order_id,package_key,token_hash,token_expires_at) VALUES($1,$2,$3,now()+interval '30 days') ON CONFLICT(order_id) DO UPDATE SET order_id=EXCLUDED.order_id WHERE shia_payments.orders.package_key=EXCLUDED.package_key AND shia_payments.orders.token_hash=EXCLUDED.token_hash RETURNING order_id`,[orderId,packageKey,tokenHash]);
     if(!result.rowCount)throw new PaymentError('El pedido ya tiene un paquete de pago diferente.',409);
   }
   async withOrder(orderId,fn){
@@ -19,6 +23,19 @@ export class PostgresStore{
       const value=await fn(rows[0],tx);await client.query('COMMIT');return value;
     }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
   }
+  async claimNotification(leaseId){
+    const {rows}=await this.pool.query(`WITH due AS (
+      SELECT id FROM shia_intake.notifications WHERE
+       (status IN ('pending','failed') AND available_at<=now()) OR (status='processing' AND locked_until<=now())
+      ORDER BY available_at FOR UPDATE SKIP LOCKED LIMIT 1
+    ) UPDATE shia_intake.notifications n SET status='processing',attempts=attempts+1,
+      lease_id=$1,locked_until=now()+interval '2 minutes' FROM due WHERE n.id=due.id RETURNING n.*`,[leaseId]);return rows[0];
+  }
+  async finishNotification(job,{providerId,error,delay=30,blocked=false}){
+    await this.pool.query(`UPDATE shia_intake.notifications SET status=$3,provider_id=$4,last_error=$5,
+      sent_at=CASE WHEN $3='sent' THEN now() ELSE NULL END,available_at=now()+$6*interval '1 second',locked_until=NULL,lease_id=NULL
+      WHERE id=$1 AND lease_id=$2 AND status='processing'`,[job.id,job.lease_id,blocked?'blocked':error?'failed':'sent',providerId||null,error||null,delay]);
+  }
   async session(sessionId){const {rows}=await this.pool.query('SELECT * FROM shia_payments.sessions WHERE session_id=$1',[sessionId]);return rows[0];}
   async applyEvent({eventId,eventType,sessionId,orderId,paid,failed,expired}){
     const client=await this.pool.connect();
@@ -28,6 +45,8 @@ export class PostgresStore{
       if(result.rowCount){
         if(paid){
           await client.query(`UPDATE shia_payments.orders SET payment_status='paid',paid_at=coalesce(paid_at,now()),updated_at=now() WHERE order_id=$1`,[orderId]);
+          // Queue paid alerts only for finalized inquiries owned by this isolated intake.
+          await client.query(`INSERT INTO shia_intake.notifications(id,order_id,kind) SELECT gen_random_uuid(),order_id,'paid' FROM shia_intake.inquiries WHERE order_id=$1 AND state='finalized' ON CONFLICT(order_id,kind) DO NOTHING`,[orderId]);
           // The unique order id prevents repeat fulfillment across duplicate events or sessions.
           await client.query(`INSERT INTO shia_payments.fulfillment_jobs(order_id,session_id) VALUES($1,$2) ON CONFLICT(order_id) DO NOTHING`,[orderId,sessionId]);
         }else if(failed||expired){

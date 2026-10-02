@@ -3,7 +3,7 @@ import { PGlite } from '@electric-sql/pglite';import { PostgresStore } from '../
 const id='559a7da0-6206-4eb0-8e53-a78d48994209';
 function poolFor(db){const query=async(sql,args)=>{const r=await db.query(sql,args);return {...r,rowCount:r.affectedRows??r.rows.length};};return {query,connect:async()=>({query,release(){}}),end:async()=>db.close()};}
 test('Actual PostgreSQL schema, session persistence, atomic paid/outbox, deduplication, and restart durability',async()=>{
- const dir=await mkdtemp(join(tmpdir(),'shia-payment-db-'));let db=new PGlite(dir);const schema=await readFile('server/schema.sql','utf8');await db.exec(schema);let store=new PostgresStore(null,{pool:poolFor(db)});
+ const dir=await mkdtemp(join(tmpdir(),'shia-payment-db-'));let db=new PGlite(dir);const schema=await readFile('server/schema.sql','utf8');await db.exec(schema);await db.exec(await readFile('server/intake-schema.sql','utf8'));let store=new PostgresStore(null,{pool:poolFor(db)});
  try{
   await store.provision({orderId:id,packageKey:'songs',tokenHash:'a'.repeat(64)});await store.provision({orderId:id,packageKey:'songs',tokenHash:'a'.repeat(64)});
   await assert.rejects(()=>store.provision({orderId:id,packageKey:'slideshow',tokenHash:'b'.repeat(64)}),{status:409});

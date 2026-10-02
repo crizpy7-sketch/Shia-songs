@@ -1,0 +1,46 @@
+# Local inquiry capture, notifications and checkout handoff
+
+Branch: `feature/reliable-intake-checkout`, based on `94ffb9cbca780cf1453af04cfe93501ad2459948`.
+Nothing in this change is deployed. No existing inquiries are copied or replayed. No email, charge, account, Stripe product, infrastructure, credential or live schema was created. The shared inventory Supabase project is explicitly refused by the new storage adapter and by database configuration containing its project identifier.
+
+## Implementation
+
+The opt-in Node intake implements the existing `submit`/`finalize` shape. Submit additionally requires a UUID `idempotency_key` and canonical `package_key` (`songs` or `slideshow`). A unique hash of the request key and a canonical payload hash ensure retries return the same opaque UUID and submission capability; a changed payload under the same key gets HTTP 409. Tokens use server-only HMAC secrets; raw submission/payment capabilities are not stored in the database.
+
+Finalize checks the capability, exact expected file paths/types/sizes, ordered slideshow roles and captions, and private storage metadata. It locks the inquiry and atomically saves finalized state, the exact manifest, and one inquiry notification. When checkout is enabled it also provisions the payment ledger and returns the deterministic `payment_token` in that transaction. A notification or payment-ledger DB failure rolls back finalization, leaving the capability reusable. A provider outage does not affect finalization. Finalize retries retain the same response/capability and reject changed manifests. Checkout remains gated separately; an inquiry can be saved with checkout disabled.
+
+The browser freezes the first submit payload and files before awaiting its response and guards overlapping handlers. Same-page retries reuse the request key and upload manifest. The isolated intake can refresh signed upload URLs and recognize previously uploaded files after an ambiguous upload response. No stories, files or capabilities are automatically saved to browser storage. Reload recovery requires the original request key and payload; the UI currently keeps the pending attempt in memory, so do not promise automatic recovery across a tab/browser restart. An opt-in draft alone is not a finalized-order recovery mechanism.
+
+The Node server injects `/api/intake` into the HTML only when isolated intake is explicitly configured. Static GitHub Pages and the disabled local preview retain their existing intake routing. There is no automatic fallback to live intake after a local API failure. Existing English/Spanish photo, motion, questionnaire, pricing and opt-in draft behavior is retained.
+
+The optional private storage adapter requires a separate approved SHIA Supabase project/bucket and backend-only key. Browser uploads use signed URLs, never the service key. The shared project is forbidden. File metadata and path validation are not malware/content scanning; configure storage limits, access, retention and any required scanning at deployment. No upload configuration is needed for file-free local tests.
+
+## Notification delivery
+
+`npm run notifications:work` claims up to 100 due jobs and exits; run under a supervised scheduler at least once per minute. Claims use `FOR UPDATE SKIP LOCKED`, finite two-minute leases, UUID lease fencing and increasing capped retry delays (30 seconds to one hour). Expired leases can be reclaimed. Missing provider settings exit with an error and do not dequeue jobs. Failed requests retain sanitized error codes; no provider body, recipient, story or secret is logged. Alerts contain only kind and opaque order UUID.
+
+Providers are configurable: Resend requires explicit sender, recipient and API key; webhook requires HTTPS, a secret and confirmed durable `Idempotency-Key` deduplication. No recipient or sender has been invented. `onboarding@resend.dev` is not a production sender configuration. A receiving Gmail address does not establish ownership of a sending domain or approve using SHIA Baby credentials.
+
+A stable job UUID forms the delivery idempotency key. Resend retains keys for [24 hours](https://resend.com/docs/dashboard/emails/idempotency-keys); jobs older than that conservative window move to `blocked` without another send. Inspect provider records before manual reconciliation; blindly resetting old jobs can duplicate an accepted email. Keep sender, destination and message settings stable while retrying ambiguous requests, since provider idempotency requires an identical payload. Webhook receivers must retain keys durably across restarts for their agreed retry horizon.
+
+Database `sent` means the provider accepted the request, not confirmed inbox delivery. Monitor provider delivery/bounce records and the database queue. SMTP/inbox delivery and downstream webhook side effects cannot be proven by an HTTP 200 alone. Monitoring must page an operator through an independent approved channel when jobs age, fail repeatedly, are blocked, or the worker heartbeat stops. A broken email service cannot reliably alert on its own failure.
+
+Paid Stripe events continue to require raw signature verification and server-authoritative session/price checks. Event receipt, paid ledger state, a unique fulfillment job, and a unique paid notification for a matching isolated finalized inquiry now commit together. Stale failures cannot undo paid state. The informational return page cannot mark paid. Paid notification is not song delivery; production fulfillment remains a separate operational workflow.
+
+## Deployment artifacts and sequence
+
+1. Approve Node 24 hosting and same-origin HTTPS frontend/API routing. GitHub Pages cannot execute this backend. `Dockerfile` packages the runtime; it was not built or deployed here. Block `/internal/*` at the public proxy and restrict trusted bridge access. Configure distributed rate limits/request bounds, monitoring and backups.
+2. Approve a dedicated SHIA database and optional private file store. In that database only, review/apply `server/schema.sql`, then `server/intake-schema.sql`, then optional `server/roles.sql`. The role artifact creates NOLOGIN groups once; assign separate backend/worker login identities through the approved secret manager. API has no delete rights; worker can select/update only the notification queue. Do not expose these schemas to Supabase Data API or public roles. Test the deployed role policies and backup restoration.
+3. Resolve authenticated private access to isolated inquiries and files before switching intake. The existing frontend admin reads the original shared Supabase ledger; it does not display the new isolated ledger. Do not redirect new customer intake without an approved private review/fulfillment tool or operator access. This change deliberately creates no public customer-data endpoint.
+4. Confirm the alert channel/destination and verified sender or idempotent webhook receiver. Securely supply `.env.example` settings in runtime secrets; schedule the worker using its own restricted database identity. Use `server/operations.sql` for read-only queue/ledger checks. Agree retention and cleanup of abandoned draft/upload records.
+5. Run isolated deployed tests with synthetic inquiries/files, force provider failure and worker restart, verify receipt/delivery, duplicate webhook handling and payment reconciliation. No historical inquiry replay is part of activation.
+6. Set `INTAKE_ENABLED=true` only after the above. Its database and 32-character secret gates are independent of checkout. Verify `/api/intake-config` and the injected HTML endpoint, then an approved synthetic inquiry. Do not blindly deploy this service as a replacement edge function into the shared inventory project.
+7. Reauthorize Stripe and verify the intended account/sandbox, approved $20/$50 prices, terms, tax treatment and webhook. Only then satisfy the separate checkout gates in `.env.example`. This implementation remains sandbox-only and refuses live Stripe keys/events. Actual live activation needs a separately reviewed change and authorization. There is no assumed 8.25% tax rate, receipt matching, retroactive paid marking or refund.
+
+## Verification
+
+See [dated local results](RELIABLE_INTAKE_QA.md): 42 offline tests and all five browser suites passed.
+
+`npm test` covers embedded PostgreSQL atomicity, concurrent retries, duplicate submit/finalize, lost-response recovery, manifests/storage failures, worker retries, ambiguous provider acknowledgement, expired deduplication windows, lease fencing, paid notifications, role isolation and restart durability. The DOM tests exercise double clicks and retries while changing interface language. Existing browser suites preserve all twelve questionnaires, responsive layout, accessibility, photos and motion.
+
+`node tests/intake-browser.mjs` adds actual local Node/embedded-Postgres/browser integration with fake uploads, Stripe and notification providers in English and Spanish. All external browser requests are blocked or fulfilled locally. Reports go to `artifacts/`; no test submits a real inquiry, email or payment. Real network/provider, deployed multi-process PostgreSQL contention, operational alerting and private admin workflow acceptance remain deployment checks.

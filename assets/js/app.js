@@ -7,6 +7,7 @@ import { OCCASION_PHOTOS } from './occasion-photos.js';
 const PREVIEW_MODE=false;
 const SUPABASE_URL="https://bjnkgxkcbbnbtazelsjs.supabase.co";
 const SUPABASE_KEY="sb_publishable_F49fzNl_CTWUdJy5ZdMDMw_MFrIOXw-";
+const LOCAL_INTAKE=document.querySelector('meta[name="shia-intake-endpoint"]')?.content==='/api/intake';
 const EDGE_URL=`${SUPABASE_URL}/functions/v1/shia-order-intake`;
 const supabase=PREVIEW_MODE?null:createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=s=>document.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)], esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
@@ -221,7 +222,7 @@ const REVIEW_STEP={k:'Revisión',h:'Revise antes de enviar',custom:'review'};
 /* ---------- state ---------- */
 const f=$('#f');let T=null,tid=null,steps=[],cur=0,photos=[],extras=[],orders=[];
 const storageKey=id=>`shia-form-v2:${id}`;
-let draftEnabled=false, selectedPlan='songs', pendingSubmission=null;
+let draftEnabled=false, selectedPlan='songs', pendingSubmission=null, pendingAttempt=null;
 const paymentUI=createPaymentUI({button:$('#checkoutButton'),panel:$('#paymentPanel'),note:$('#paymentNote')});
 $$('[data-plan]').forEach(a=>a.onclick=()=>{selectedPlan=a.dataset.plan});
 $('#year').textContent=new Date().getFullYear();
@@ -232,7 +233,7 @@ $('#tgrid').innerHTML=TEMPLATE_ORDER.map((id,i)=>{const t=TEMPLATES[id],photo=OC
 $$('.tcard').forEach(b=>b.onclick=()=>chooseTemplate(b.dataset.t));
 
 function chooseTemplate(id){
-  if(pendingSubmission||f.classList.contains('submitting'))return showError('Hay una solicitud pendiente de confirmar. Termine o reintente este envío antes de comenzar otra historia.');
+  if(pendingAttempt||pendingSubmission||f.classList.contains('submitting'))return showError('Hay una solicitud pendiente de confirmar. Termine o reintente este envío antes de comenzar otra historia.');
   tid=id;T=TEMPLATES[id];steps=[...T.steps,PHOTOS_STEP,REVIEW_STEP];
   setText($('#formTitle'),T.title);
   setText($('#formBlurb'),T.blurbLong||'Complete el formulario paso a paso. Sus respuestas y archivos se enviarán de forma privada a Shia Songs.');
@@ -247,7 +248,7 @@ function chooseTemplate(id){
   ui();
   scrollTo({top:0,behavior:scrollBehavior()});
 }
-$('#changeTemplate').onclick=()=>{if(pendingSubmission)return showError('Hay una solicitud pendiente de confirmar. Reintente el envío antes de cambiar el tipo de canción.');save();$('#formArea').classList.add('hidden');$('#picker').classList.remove('hidden');scrollTo({top:0,behavior:scrollBehavior()})};
+$('#changeTemplate').onclick=()=>{if(pendingAttempt||pendingSubmission)return showError('Hay una solicitud pendiente de confirmar. Reintente el envío antes de cambiar el tipo de canción.');save();$('#formArea').classList.add('hidden');$('#picker').classList.remove('hidden');scrollTo({top:0,behavior:scrollBehavior()})};
 
 /* ---------- step rendering ---------- */
 function fieldHTML(x){
@@ -373,9 +374,9 @@ $('#save').onclick=()=>save(true);
 f.addEventListener('input',()=>save());
 
 /* ---------- submit ---------- */
-async function callIntake(body){if(PREVIEW_MODE)throw new Error('Vista previa: no se envían solicitudes ni archivos.');const res=await fetch(EDGE_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify(body)});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'No se pudo enviar la solicitud.');return data}
+async function callIntake(body){if(PREVIEW_MODE)throw new Error('Vista previa: no se envían solicitudes ni archivos.');const res=await fetch(LOCAL_INTAKE?'/api/intake':EDGE_URL,{method:'POST',headers:LOCAL_INTAKE?{'Content-Type':'application/json'}:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify(body)});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'No se pudo enviar la solicitud.');return data}
 f.onsubmit=async e=>{
-  e.preventDefault();if(!valid())return;
+  e.preventDefault();if(f.classList.contains('submitting')||(!pendingAttempt&&!valid()))return;
   const submit=$('#submit');setText(submit,'Enviando…');f.classList.add('submitting');
   try{
     const a=formDataObject();
@@ -384,28 +385,34 @@ f.onsubmit=async e=>{
     const m=T.meta(a);
     const upload=[...photos.map(p=>p.file),...extras];
     const fileMeta=upload.map(x=>({name:x.name,size:x.size,type:x.type}));
-    const created=pendingSubmission?.created||await callIntake({action:'submit',website:'',order_type:'personalized_song',
+    const body=pendingAttempt?.body||{action:'submit',idempotency_key:crypto.randomUUID(),package_key:selectedPlan,website:'',order_type:'personalized_song',
       title:m.title||`Canción personalizada · ${T.name}`,
       customer_name:a['Persona que realiza el pedido'],customer_email:a['Correo electrónico'],customer_phone:a['Teléfono'],
       event_date:a['Fecha del evento']||null,
       couple_names:m.subject||null,anniversary_date:m.date||null,years_married:m.years||null,
       language:a['Idioma']||null,
       music_style:(a['Estilo musical']==='Otro'?a['Otro estilo']:a['Estilo musical'])||a['Otro estilo']||null,
-      emotion:a['Emoción']||null,answers:{...a,'Paquete elegido':selectedPlan==='slideshow'?'Canciones + video · $50 USD':'Canciones + letras · $20 USD'},files:fileMeta});
-    if(!pendingSubmission){pendingSubmission={created,upload,manifest:[],plan:selectedPlan,photos:photos.map(p=>({caption:p.caption}))};
+      emotion:a['Emoción']||null,answers:{...a,'Paquete elegido':selectedPlan==='slideshow'?'Canciones + video · $50 USD':'Canciones + letras · $20 USD'},files:fileMeta};
+    if(!pendingAttempt){pendingAttempt={body,upload,plan:selectedPlan,photos:photos.map(p=>({caption:p.caption}))};
+      $$('input,textarea',f).forEach(n=>n.disabled=true);$('#back').disabled=true;$('#save').disabled=true;}
+    const created=(!pendingSubmission||(LOCAL_INTAKE&&pendingSubmission.manifest.length<pendingSubmission.upload.length))?await callIntake(pendingAttempt.body):pendingSubmission.created;
+    if(!pendingSubmission){pendingSubmission={created,upload:pendingAttempt.upload,manifest:[],plan:pendingAttempt.plan,photos:pendingAttempt.photos};
       $$('input,textarea',f).forEach(n=>n.disabled=true);$('#back').disabled=true;$('#save').disabled=true;}
     if(created.uploads.length!==pendingSubmission.upload.length)throw Object.assign(new Error('El servidor no aceptó todos los archivos. No se confirmó la solicitud. Conserve este número para consultar: {number}'),{i18nParams:{number:created.order_number}});
     const manifest=pendingSubmission.manifest;
     for(let i=manifest.length;i<created.uploads.length;i++){
       const u=created.uploads[i],file=pendingSubmission.upload[i],isPhoto=i<pendingSubmission.photos.length;
-      const {error}=await supabase.storage.from('shia-song-uploads').uploadToSignedUrl(u.path,u.token,file,{contentType:file.type});
-      if(error)throw error;
+      if(LOCAL_INTAKE){
+        if(!u.uploaded){const response=await fetch(u.upload_url,{method:'PUT',headers:{'Content-Type':file.type},body:file});if(!response.ok)throw new Error('No se pudo enviar la solicitud.');}
+      }else{
+        const {error}=await supabase.storage.from('shia-song-uploads').uploadToSignedUrl(u.path,u.token,file,{contentType:file.type});if(error)throw error;
+      }
       manifest.push({name:file.name,path:u.path,type:file.type,size:file.size,role:isPhoto?'slideshow':'referencia',order:isPhoto?i+1:null,caption:isPhoto?pendingSubmission.photos[i].caption:''});
     }
     const finalize=fm=>callIntake({action:'finalize',order_id:created.order_id,submission_token:created.submission_token,file_manifest:fm});
     const final=await finalize(manifest);
     await paymentUI.setOrder({orderId:created.order_id,token:final.payment_token,packageKey:pendingSubmission.plan});
-    pendingSubmission=null;
+    pendingSubmission=null;pendingAttempt=null;
     try{localStorage.removeItem(storageKey(tid));}catch{}
     setText($('#doneMessage'),'Su número de solicitud es #{number}. Guárdelo para referencia.',{number:final.order_number});
     $('#done').showModal();
@@ -417,7 +424,7 @@ $('#close').onclick=()=>$('#done').close();
 
 /* ---------- admin ---------- */
 function switchView(admin){$('#customerApp').classList.toggle('hidden',admin);$('#adminApp').classList.toggle('hidden',!admin);$('#showForm').classList.toggle('active',!admin);$('#showAdmin').classList.toggle('active',admin);if(admin)checkAdminSession()}
-function goHome(){if(pendingSubmission||f.classList.contains('submitting'))return showError('Hay una solicitud pendiente de confirmar. Termine o reintente este envío antes de volver al inicio.');switchView(false);$('#formArea').classList.add('hidden');$('#picker').classList.remove('hidden');scrollTo({top:0,behavior:scrollBehavior()})}
+function goHome(){if(pendingAttempt||pendingSubmission||f.classList.contains('submitting'))return showError('Hay una solicitud pendiente de confirmar. Termine o reintente este envío antes de volver al inicio.');switchView(false);$('#formArea').classList.add('hidden');$('#picker').classList.remove('hidden');scrollTo({top:0,behavior:scrollBehavior()})}
 $('#brandHome').onclick=e=>{e.preventDefault();goHome()};$('#footerAdmin').onclick=()=>switchView(true);
 $('#showForm').onclick=()=>{switchView(false);if(!tid)$('#ocasiones').scrollIntoView({behavior:scrollBehavior()})};$('#showAdmin').onclick=()=>switchView(true);if(location.hash==='#admin')switchView(true);
 $('#typeFilter').innerHTML='<option value="">Todos los tipos</option>'+TEMPLATE_ORDER.map(id=>`<option value="${esc(TEMPLATES[id].name)}">${esc(TEMPLATES[id].name)}</option>`).join('');

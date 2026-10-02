@@ -1,5 +1,7 @@
 # Stripe activation and trusted fulfillment contract
 
+See [the local reliable-intake implementation and deployment gates](RELIABLE_INTAKE.md). The standalone intake, notification retry worker, paid alert outbox, migrations and container artifact are now implemented locally. The live shared intake remains unchanged.
+
 ## Current status
 
 This is a **sandbox-only scaffold**, disabled by default. It cannot create live sessions, accept live webhook events, or transact with live keys. No credentials, accounts, grants, products, prices, endpoints, or migrations were created remotely.
@@ -21,9 +23,9 @@ The creator has not specified turnaround, revisions, refunds, copyright/commerci
 
 1. Approve the missing commercial/service terms and tax treatment
 2. Approve and provision a separate Stripe sandbox, minimal restricted API key, the two package Price IDs, and webhook endpoint through a secure setup flow. This implementation does not create persistent access
-3. Choose an approved durable PostgreSQL database. Prefer isolation from the shared existing Supabase inventory project. Review `server/schema.sql` and provision a backend-only least-privilege role with matching RLS policies. The private schema is never exposed to public clients or Supabase's Data API
-4. Add the trusted intake bridge below, including idempotent submission/finalization and resumable capability return
-5. Implement the fulfillment worker and operational reconciliation below; do not confuse an enqueued job with a delivered song
+3. Choose an approved durable PostgreSQL database. Prefer isolation from the shared existing Supabase inventory project. Review `server/schema.sql`, `server/intake-schema.sql`, and `server/roles.sql` and provision a backend-only least-privilege role with matching RLS policies. The private schema is never exposed to public clients or Supabase's Data API
+4. Deploy and validate the isolated idempotent intake/checkout handoff (or separately adapt the trusted bridge below); resolve private operator access to its ledger
+5. Deploy the implemented notification worker and operational checks; implement the production fulfillment worker and reconciliation below; do not confuse an enqueued job with a delivered song
 6. Complete real sandbox tests, duplicate/concurrent webhook delivery, delayed-payment success/failure, expired/cancelled sessions, persistence/backup/restart, and browser/accessibility checks
 7. Only then set explicit gate variables in the runtime secret manager. Live activation needs a separate reviewed change, since this code intentionally rejects live keys/events
 

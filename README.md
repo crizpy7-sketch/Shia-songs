@@ -47,7 +47,7 @@ npm test
 npm run test:browser
 ```
 
-`npm test` currently passes 28 checks. It uses mocked Stripe/intake clients, isolated JSDOM, and an embedded PostgreSQL engine for schema and transaction verification, plus translation and state-preservation regression coverage. It makes no live Stripe calls and creates no real Supabase orders.
+`npm test` covers checkout, reliable intake and notification retries. It uses mocked Stripe/intake clients, isolated JSDOM, and an embedded PostgreSQL engine for schema and transaction verification, plus translation and state-preservation regression coverage. It makes no live Stripe calls and creates no real Supabase orders.
 
 `test:browser` uses the installed Chromium executable (`/usr/bin/chromium`) and blocks/mocks all external requests. Its four suites check responsive layout, all 12 forms in both customer languages, mocked intake, answer/draft/photo preservation, native touch carousel scrolling, keyboard/SVG controls, accessibility scans, reduced motion, and progressive fallbacks. See [current verification](docs/HERO_REFINEMENT_QA.md) for current results, genuine screenshots and a short motion recording; these checks do not exercise live intake or payments.
 
@@ -59,10 +59,10 @@ Read [the Stripe activation plan](docs/STRIPE_ACTIVATION.md) before enabling any
 
 ## Verification boundaries
 
-- Build succeeds; syntax checks succeed; 28 offline tests pass
+- Build, offline unit/database tests and browser checks are documented with their current results in [reliable-intake notes](docs/RELIABLE_INTAKE.md)
 - Actual PostgreSQL DDL, atomic payment/outbox rollback, event deduplication, and restart durability pass in PGlite
 - No production database migrations, schema changes, account setup, key creation, Stripe products/prices, payments, emails, push, merge, or deployment were performed
 - Real Stripe sandbox checkout/webhook delivery, a deployed PostgreSQL role/policy setup, the live intake bridge, production fulfillment, and real-device acceptance remain activation gates
-- The existing live intake is not idempotent and consumes its submission token on finalize. The UI reuses a known pending order and uploaded-file manifest for retries, but a lost response before the browser receives an order ID or a finalized response still requires reconciliation. The backend must gain an approved idempotent resume/finalize contract before payment launch
+- The existing live intake remains unchanged. The new opt-in isolated Node intake implements idempotent submit/finalize and transactional inquiry/paid notification queues. It requires separately approved hosting, database/storage, recipient/sender, private operator access and activation; see [implementation and operations](docs/RELIABLE_INTAKE.md). Pending browser attempts survive same-page retries; automatic tab-restart recovery is not implemented.
 
 Photo sources and licenses are recorded in [PHOTO_CREDITS.md](docs/PHOTO_CREDITS.md) and on the visible credits page.

@@ -38,3 +38,16 @@ test('Draft package and song-language answers stay canonical across interface sw
 });
 test('Storage-denied locale switches still preserve answers',()=>{const {dom,w,d}=setup();try{d.querySelector('[data-t="aniversario"]').click();fill(d);const before=[...new w.FormData(d.querySelector('#f'))];w.Storage.prototype.setItem=()=>{throw new Error('Mock denied storage')};w.setLanguage('es');assert.equal(d.documentElement.lang,'es');assert.deepEqual([...new w.FormData(d.querySelector('#f'))],before);w.setLanguage('en');assert.equal(d.documentElement.lang,'en');assert.deepEqual([...new w.FormData(d.querySelector('#f'))],before);}finally{dom.window.close();}});
 test('Unknown backend errors use localized safe customer text',async()=>{const {dom,w,d}=setup();try{d.querySelector('[data-t="aniversario"]').click();let count=0;while(!d.querySelector('#next').classList.contains('hidden')){fill(d);d.querySelector('#next').click();assert(++count<20);}fill(d);w.fetch=async()=>({ok:false,json:async()=>({error:'Error secreto del proveedor desconocido'})});await d.querySelector('#f').onsubmit({preventDefault(){}});const english=d.querySelector('#err').textContent;assert(!english.includes('Error secreto'));assert.match(english,/could not|unable|try|failed|error occurred/i);w.setLanguage('es');assert(!d.querySelector('#err').textContent.includes('Error secreto'));assert.notEqual(d.querySelector('#err').textContent,english);}finally{dom.window.close();}});
+test('Double clicks and lost submit/finalize responses retain one frozen bilingual submission',async()=>{
+ const {dom,w,d}=setup();try{
+  d.querySelector('[data-t="aniversario"]').click();while(!d.querySelector('#next').classList.contains('hidden')){fill(d);d.querySelector('#next').click();}fill(d);
+  const requests=[];let release;let lostSubmit=true,lostFinalize=true;
+  w.fetch=async(url,opts)=>{const body=JSON.parse(opts.body);requests.push(body);
+   if(body.action==='submit'){if(lostSubmit){lostSubmit=false;await new Promise(r=>release=r);throw new Error('fake lost response');}return {ok:true,json:async()=>({order_id:'559a7da0-6206-4eb0-8e53-a78d48994209',order_number:'FAKE',submission_token:'fake',uploads:[]})};}
+   if(lostFinalize){lostFinalize=false;throw new Error('fake lost finalize response');}return {ok:true,json:async()=>({order_number:'FAKE'})};
+  };
+  const send=()=>d.querySelector('#f').onsubmit({preventDefault(){}});const first=send();await send();assert.equal(requests.length,1);release();await first;
+  w.setLanguage('es');assert.equal(d.documentElement.lang,'es');await send();assert.equal(requests.filter(r=>r.action==='submit').length,2);assert.deepEqual(requests[0],requests[1]);assert.match(requests[0].idempotency_key,/^[0-9a-f-]{36}$/);assert.equal(requests[0].package_key,'songs');
+  w.setLanguage('en');await send();assert(d.querySelector('#done').hasAttribute('open'));assert.equal(requests.filter(r=>r.action==='submit').length,2);const finals=requests.filter(r=>r.action==='finalize');assert.deepEqual(finals[0],finals[1]);
+ }finally{dom.window.close();}
+});

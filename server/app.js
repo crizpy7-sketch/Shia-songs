@@ -11,7 +11,7 @@ export async function readBody(req,max=16384){
   return Buffer.concat(parts);
 }
 function json(res,status,value){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value));}
-export function createApp({config,payments,stripe,root=resolve('.'),now=()=>Date.now()}){
+export function createApp({config,payments,stripe,intake=null,root=resolve('.'),now=()=>Date.now()}){
   const limits=new Map();
   function rateLimit(req){
     const key=req.socket.remoteAddress||'unknown';const time=now();let value=limits.get(key);
@@ -20,10 +20,17 @@ export function createApp({config,payments,stripe,root=resolve('.'),now=()=>Date
     if(value.count>12)throw new PaymentError('Espere un momento antes de volver a intentar.',429);
   }
   return async(req,res)=>{
-    res.setHeader('Content-Security-Policy',CSP);res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');res.setHeader('X-Frame-Options','DENY');
+    res.setHeader('Content-Security-Policy',config.storageOrigin?CSP.replace("connect-src 'self'",`connect-src 'self' ${config.storageOrigin}`):CSP);res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');res.setHeader('X-Frame-Options','DENY');
     if(config.origin.startsWith('https:'))res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains');
     try{
       const url=new URL(req.url,config.origin);
+      if(url.pathname==='/api/intake-config'&&req.method==='GET')return json(res,200,{enabled:!!intake,endpoint:'/api/intake'});
+      if(url.pathname==='/api/intake'&&req.method==='POST'){
+        if(!intake)throw new PaymentError('No se pudo enviar la solicitud.',503);
+        if(req.headers.origin!==config.origin)throw new PaymentError('Origen no permitido.',403);
+        if(!String(req.headers['content-type']||'').startsWith('application/json'))throw new PaymentError('Tipo de solicitud no válido.',415);
+        rateLimit(req);return json(res,200,await intake.handle(JSON.parse((await readBody(req,128*1024)).toString('utf8'))));
+      }
       if(url.pathname==='/api/payment-config'&&req.method==='GET')return json(res,200,publicConfig(config));
       if(url.pathname==='/api/checkout'&&req.method==='POST'){
         if(req.headers.origin!==config.origin)throw new PaymentError('Origen no permitido.',403);
@@ -45,6 +52,7 @@ export function createApp({config,payments,stripe,root=resolve('.'),now=()=>Date
       if(!['index.html','payment-status.html','credits.html'].includes(relative)&&!relative.startsWith('assets/'))return json(res,404,{error:'Página no encontrada.'});
       const file=resolve(root,relative);if(!file.startsWith(root+sep))return json(res,404,{error:'Página no encontrada.'});
       let data;try{data=await readFile(file);}catch{return json(res,404,{error:'Página no encontrada.'});}
+      if(relative==='index.html'&&intake)data=Buffer.from(data.toString('utf8').replace('name="shia-intake-endpoint" content=""','name="shia-intake-endpoint" content="/api/intake"'));
       const type=TYPES[extname(file)];if(!type)return json(res,404,{error:'Página no encontrada.'});
       const etag='"'+createHash('sha256').update(data).digest('hex').slice(0,20)+'"';res.setHeader('ETag',etag);res.setHeader('Cache-Control','no-cache');
       if(req.headers['if-none-match']===etag){res.writeHead(304);return res.end();}
