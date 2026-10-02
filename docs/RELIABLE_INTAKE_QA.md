@@ -13,3 +13,5 @@ Verified 2026-10-02 in the dedicated environment, Node 24.19.0. Base commit: `94
 No live inquiries, shared Supabase project, credentials, accounts, email, SMS, charges, tax settings, refunds, Stripe products, infrastructure, pushes/PRs or deployments were touched. Container build, real provider delivery, multi-process deployed PostgreSQL contention and hosted operational monitoring are not verified here.
 
 See [implementation, recovery limits and activation gates](RELIABLE_INTAKE.md). In particular, same-page retries are supported; automatic pending-attempt recovery after a browser restart and a private operator viewer for the isolated ledger are not implemented.
+
+Recipient handoff updated after the user selected `crizpy7@gmail.com` on 2026-10-02 at 15:59 UTC. Only the configuration example and documentation changed; provider, sender and credentials remain unset. No delivery test or external activation was performed.
