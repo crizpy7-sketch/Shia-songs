@@ -2,6 +2,8 @@
 
 See [the local reliable-intake implementation and deployment gates](RELIABLE_INTAKE.md). The standalone intake, notification retry worker, paid alert outbox, migrations and container artifact are now implemented locally. The live shared intake remains unchanged.
 
+The [resumed activation route](ACTIVATION_ROUTE.md) distinguishes the existing edge infrastructure from this standalone Node implementation and gives exact remaining source/publication/activation requirements.
+
 ## Current status
 
 This is a **sandbox-only scaffold**, disabled by default. It cannot create live sessions, accept live webhook events, or transact with live keys. No credentials, accounts, grants, products, prices, endpoints, or migrations were created remotely.

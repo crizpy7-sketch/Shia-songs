@@ -9,6 +9,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node --env-file-if-exists=.env server/index.js",
+    "inquiries:review": "node --env-file-if-exists=.env server/review-inquiry.js",
     "notifications:work": "node --env-file-if-exists=.env server/notification-worker.js",
     "start": "node --env-file-if-exists=.env server/index.js",
     "test": "node --test tests/*.test.js",

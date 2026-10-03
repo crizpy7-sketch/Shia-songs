@@ -1,7 +1,7 @@
 import { createHash,createHmac,timingSafeEqual } from 'node:crypto';
 import { packageFor } from './catalog.js';
 export const hashToken=token=>createHash('sha256').update(token).digest('hex');
-export function sameSecret(a,b){const x=Buffer.from(a||''),y=Buffer.from(b||'');return x.length>0&&x.length===y.length&&timingSafeEqual(x,y);}
+export function sameSecret(a,b){if(typeof a!=='string'||typeof b!=='string')return false;const x=Buffer.from(a),y=Buffer.from(b);return x.length>0&&x.length===y.length&&timingSafeEqual(x,y);}
 export function paymentCapability(orderId,packageKey,secret){return createHmac('sha256',secret).update(`shia-payment:v1:${orderId}:${packageKey}`).digest('base64url');}
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export class PaymentError extends Error{constructor(message,status=400){super(message);this.status=status;}}
@@ -9,14 +9,14 @@ export class Payments{
   constructor({stripe,store,config}){this.stripe=stripe;this.store=store;this.config=config;}
   requireReady(){if(!this.config.enabled)throw new PaymentError('El pago en línea todavía no está activo.',503);}
   async provision({orderId,packageKey}){
-    this.requireReady();if(!UUID.test(orderId||'')||!packageFor(packageKey))throw new PaymentError('Solicitud de pago inválida.');
+    this.requireReady();if(typeof orderId!=='string'||!UUID.test(orderId)||!packageFor(packageKey))throw new PaymentError('Solicitud de pago inválida.');
     const token=paymentCapability(orderId,packageKey,this.config.tokenSecret);
     await this.store.provision({orderId,packageKey,tokenHash:hashToken(token)});
     return {orderId,paymentToken:token};
   }
   async checkout({orderId,paymentToken,packageKey}){
     this.requireReady();const p=packageFor(packageKey);
-    if(!UUID.test(orderId||'')||!p||typeof paymentToken!=='string'||paymentToken.length>128)throw new PaymentError('Solicitud de pago inválida.');
+    if(typeof orderId!=='string'||!UUID.test(orderId)||!p||typeof paymentToken!=='string'||paymentToken.length>128)throw new PaymentError('Solicitud de pago inválida.');
     return this.store.withOrder(orderId,async(order,tx)=>{
       if(!order||!sameSecret(order.token_hash,hashToken(paymentToken))||new Date(order.token_expires_at)<=new Date())throw new PaymentError('El acceso al pago no es válido o ha vencido.',403);
       if(order.package_key!==packageKey)throw new PaymentError('El paquete no coincide con su solicitud.',403);

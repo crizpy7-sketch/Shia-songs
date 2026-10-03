@@ -15,3 +15,16 @@ No live inquiries, shared Supabase project, credentials, accounts, email, SMS, c
 See [implementation, recovery limits and activation gates](RELIABLE_INTAKE.md). In particular, same-page retries are supported; automatic pending-attempt recovery after a browser restart and a private operator viewer for the isolated ledger are not implemented.
 
 Recipient handoff updated after the user selected `crizpy7@gmail.com` on 2026-10-02 at 15:59 UTC. Only the configuration example and documentation changed; provider, sender and credentials remain unset. No delivery test or external activation was performed.
+
+
+## Resumed verification — 2026-10-03
+
+- Dedicated executor available; saved commits `6412eac`/`76f5c8a` preserved. Read-only remote comparison: `origin/main` remains `94ffb9cbca780cf1453af04cfe93501ad2459948`; no newer main changes to overwrite.
+- `npm run build`: passed. `npm test`: **51 passed, 0 failed**. All five browser suites passed again; the full local intake integration also passed separately after the endpoint update. `git diff --check` and relevant JavaScript syntax checks passed.
+- New tests cover malformed credentials/UUIDs/packages/JSON, correcting definitive isolated pre-save validation rejection while retaining uncertain attempts, native pending-navigation protection, blank provider acknowledgements, read-only reviewer RLS/column privileges, configurable HTTPS edge routing without token-bearing URLs, duplicate payment clicks, and stale config-response fencing.
+- The Node fallback now has a private terminal reviewer (`npm run inquiries:review -- <UUID> [--files]`). Fake-data tests verify finalized-only access, short-lived file URLs, no mutations and no token-hash access. This does not configure a live operator identity or add a public inquiry endpoint.
+- Latest local integration evidence remains 3 submit and 3 finalize requests, exactly 2 saved/finalized local inquiries, 2 mock Stripe sessions and 2 mock accepted alerts in English/Spanish, zero browser errors and zero real external requests. This proves local/mock behavior, not live inquiry persistence, inbox delivery, payment success or fulfillment.
+- The parent supplied live connector audit facts; they were reconciled in [the activation route](ACTIVATION_ROUTE.md). The parent's denied live frontend fetch was not retried here. Stripe reconnection is confirmed by the parent; secrets, provider/account readiness, source publication and activation remain separate approvals.
+- The Pages/Supabase route requires the audited v1 source and exact SHIA DDL, an edge adaptation and explicit SHIA-only shared-project migration approval. The standalone migrations remain guarded against that shared project. No blind shared migration or edge rewrite was produced.
+
+No live submissions, emails, charges, historical inquiry reads/replay, secret configuration, hosting purchases, provider configuration, pushes, merges or deployments occurred. Automatic tab-restart recovery and a browser-based viewer for the isolated ledger remain unimplemented; the native warning and private CLI reduce the corresponding operational gaps.

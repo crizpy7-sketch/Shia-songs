@@ -1,8 +1,8 @@
 import { OCCASION_PHOTOS } from '../assets/js/occasion-photos.js';
 import test from 'node:test';import assert from 'node:assert/strict';import { readFile } from 'node:fs/promises';import { JSDOM } from 'jsdom';import { validateUpload } from '../assets/js/upload-policy.js';import { buildSync } from 'esbuild';
 const html=await readFile('index.html','utf8');const script=(await readFile('assets/js/app.js','utf8')).replace(/^import .*;$/gm,'');
-function setup(){
- const dom=new JSDOM(html,{url:'http://localhost:3000',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;const calls=[];
+function setup({localIntake=false}={}){
+ const dom=new JSDOM(localIntake?html.replace('name="shia-intake-endpoint" content=""','name="shia-intake-endpoint" content="/api/intake"'):html,{url:'http://localhost:3000',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;const calls=[];
  w.scrollTo=()=>{};w.HTMLElement.prototype.scrollIntoView=()=>{};w.CSS={escape:s=>String(s).replace(/[\\"]/g,'\\$&')};w.URL.createObjectURL=()=> 'blob:test';w.URL.revokeObjectURL=()=>{};w.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','')};w.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open')};
  w.createClient=()=>({auth:{getUser:async()=>({data:{user:null}})},storage:{from:()=>({uploadToSignedUrl:async()=>({error:null})})}});w.validateUpload=validateUpload;w.OCCASION_PHOTOS=OCCASION_PHOTOS;w.eval(buildSync({entryPoints:['assets/js/i18n.js'],bundle:true,write:false,format:'iife',globalName:'TestI18n'}).outputFiles[0].text);w.eval('var {t,getLanguage,setLanguage,applyTranslations,TRANSLATIONS}=TestI18n;');w.eval(buildSync({entryPoints:['assets/js/payments.js'],bundle:true,write:false,format:'iife',globalName:'TestPayments'}).outputFiles[0].text);w.createPaymentUI=opts=>w.TestPayments.createPaymentUI({...opts,fetcher:async()=>({ok:false})});
  w.fetch=async(url,opts)=>{const body=JSON.parse(opts.body);calls.push(body);return {ok:true,json:async()=>body.action==='submit'?{order_id:'559a7da0-6206-4eb0-8e53-a78d48994209',order_number:'QA-ONLY',submission_token:'mock',uploads:body.files.map((_,i)=>({path:'test/'+i,token:'mock'}))}:{order_number:'QA-ONLY'}};};
@@ -49,5 +49,16 @@ test('Double clicks and lost submit/finalize responses retain one frozen bilingu
   const send=()=>d.querySelector('#f').onsubmit({preventDefault(){}});const first=send();await send();assert.equal(requests.length,1);release();await first;
   w.setLanguage('es');assert.equal(d.documentElement.lang,'es');await send();assert.equal(requests.filter(r=>r.action==='submit').length,2);assert.deepEqual(requests[0],requests[1]);assert.match(requests[0].idempotency_key,/^[0-9a-f-]{36}$/);assert.equal(requests[0].package_key,'songs');
   w.setLanguage('en');await send();assert(d.querySelector('#done').hasAttribute('open'));assert.equal(requests.filter(r=>r.action==='submit').length,2);const finals=requests.filter(r=>r.action==='finalize');assert.deepEqual(finals[0],finals[1]);
+ }finally{dom.window.close();}
+});
+
+test('Isolated submit validation rejection unlocks correction; uncertain failures retain frozen attempt',async()=>{
+ const {dom,w,d}=setup({localIntake:true});try{
+  d.querySelector('[data-t="personalizada"]').click();while(!d.querySelector('#next').classList.contains('hidden')){fill(d);d.querySelector('#next').click();}fill(d);
+  const requests=[];let status=400;w.fetch=async(url,opts)=>{requests.push(JSON.parse(opts.body));return {ok:false,status,json:async()=>({error:'No se pudo enviar la solicitud.'})};};const send=()=>d.querySelector('#f').onsubmit({preventDefault(){}});
+  await send();assert.equal(d.querySelector('#back').disabled,false);assert.equal(d.querySelector('#f input[required]').disabled,false);
+  status=503;await send();assert.notEqual(requests[0].idempotency_key,requests[1].idempotency_key);assert.equal(d.querySelector('#back').disabled,true);
+  const warning=new w.Event('beforeunload',{cancelable:true});w.dispatchEvent(warning);assert.equal(warning.defaultPrevented,true);
+  w.setLanguage('es');await send();assert.deepEqual(requests[1],requests[2]);assert.equal(d.querySelector('#back').disabled,true);
  }finally{dom.window.close();}
 });

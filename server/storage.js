@@ -7,6 +7,7 @@ export function createStorage(env=process.env){
  const client=createClient(url.origin,env.SHIA_STORAGE_SERVICE_KEY,{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:(url,options)=>fetch(url,{...options,signal:AbortSignal.timeout(20000)})}});
  const bucket=client.storage.from(env.SHIA_STORAGE_BUCKET);
  return {
+  async read(path){const {data,error}=await bucket.createSignedUrl(path,300);if(error)throw new Error('Private file access unavailable');return data.signedUrl;},
   async sign(path){const {data,error}=await bucket.createSignedUploadUrl(path);if(error)throw new Error('Storage signing unavailable');return data.signedUrl;},
   async verify(file){const [folder,name]=file.path.split('/');const {data,error}=await bucket.list(folder,{search:name,limit:100});if(error)throw new Error('Storage verification unavailable');const found=data?.find(f=>f.name===name);return found?.metadata?.size===file.size&&found.metadata.mimetype===file.type;}
  };

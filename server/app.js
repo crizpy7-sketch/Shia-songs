@@ -10,6 +10,11 @@ export async function readBody(req,max=16384){
   for await(const part of req){size+=part.length;if(size>max)throw new PaymentError('La solicitud es demasiado grande.',413);parts.push(part);}
   return Buffer.concat(parts);
 }
+async function readJson(req,max){
+  const body=JSON.parse((await readBody(req,max)).toString('utf8'));
+  if(!body||typeof body!=='object'||Array.isArray(body))throw new PaymentError('JSON no válido.');
+  return body;
+}
 function json(res,status,value){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value));}
 export function createApp({config,payments,stripe,intake=null,root=resolve('.'),now=()=>Date.now()}){
   const limits=new Map();
@@ -29,17 +34,17 @@ export function createApp({config,payments,stripe,intake=null,root=resolve('.'),
         if(!intake)throw new PaymentError('No se pudo enviar la solicitud.',503);
         if(req.headers.origin!==config.origin)throw new PaymentError('Origen no permitido.',403);
         if(!String(req.headers['content-type']||'').startsWith('application/json'))throw new PaymentError('Tipo de solicitud no válido.',415);
-        rateLimit(req);return json(res,200,await intake.handle(JSON.parse((await readBody(req,128*1024)).toString('utf8'))));
+        rateLimit(req);return json(res,200,await intake.handle(await readJson(req,128*1024)));
       }
       if(url.pathname==='/api/payment-config'&&req.method==='GET')return json(res,200,publicConfig(config));
       if(url.pathname==='/api/checkout'&&req.method==='POST'){
         if(req.headers.origin!==config.origin)throw new PaymentError('Origen no permitido.',403);
         if(!String(req.headers['content-type']||'').startsWith('application/json'))throw new PaymentError('Tipo de solicitud no válido.',415);
-        rateLimit(req);payments.requireReady();const body=JSON.parse((await readBody(req)).toString('utf8'));return json(res,200,await payments.checkout(body));
+        rateLimit(req);payments.requireReady();const body=await readJson(req);return json(res,200,await payments.checkout(body));
       }
       if(url.pathname==='/internal/payment-orders'&&req.method==='POST'){
         payments.requireReady();if(!sameSecret(req.headers['x-shia-intake-secret'],config.bridgeSecret))throw new PaymentError('Unauthorized intake bridge.',401);
-        const body=JSON.parse((await readBody(req)).toString('utf8'));return json(res,200,await payments.provision(body));
+        const body=await readJson(req);return json(res,200,await payments.provision(body));
       }
       if(url.pathname==='/api/stripe-webhook'&&req.method==='POST'){
         payments.requireReady();const raw=await readBody(req,1024*1024);const signature=req.headers['stripe-signature'];let event;

@@ -53,6 +53,9 @@ npm run test:browser
 
 ## Deployment shape
 
+The [2026-10-03 activation review](docs/ACTIVATION_ROUTE.md) proposes retaining Pages and the existing Supabase edge intake through a narrowly reviewed SHIA-only adaptation. The Node server is a tested isolated fallback; its migrations must not be applied directly to the shared project.
+
+
 The existing GitHub Pages setup can serve `index.html`, `assets/`, `credits.html`, and `payment-status.html`. It cannot execute the payment backend. To activate Stripe, serve the frontend and Node API from the same trusted HTTPS origin, or deliberately implement a reviewed reverse proxy; no open CORS workaround is provided.
 
 Read [the Stripe activation plan](docs/STRIPE_ACTIVATION.md) before enabling any payment route. Live keys are deliberately refused by this scaffold. Production activation is a separate approved change.

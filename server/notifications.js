@@ -9,7 +9,7 @@ export function notificationProvider(env=process.env,fetcher=fetch){
    // No customer stories, photos, contact details or bearer tokens leave the database.
    const response=await fetcher('https://api.resend.com/emails',{method:'POST',signal:AbortSignal.timeout(20000),headers:{Authorization:`Bearer ${env.RESEND_API_KEY}`,'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify({from:env.NOTIFICATION_FROM,to:[env.NOTIFICATION_TO],subject:kind==='paid'?'SHIA Songs: payment confirmed':'SHIA Songs: new inquiry',text:`${kind==='paid'?'Payment confirmed':'New inquiry received'}. Reference: ${orderId}. Review the private SHIA inquiry ledger.`})});
    if(!response.ok)throw new DeliveryError(`provider_http_${response.status}`);
-   const data=await response.json();if(typeof data.id!=='string')throw new DeliveryError('provider_invalid_response');return data.id;
+   const data=await response.json();if(typeof data.id!=='string'||!data.id.trim()||data.id.length>255)throw new DeliveryError('provider_invalid_response');return data.id;
   }};
  }
  if(mode==='webhook'&&env.NOTIFICATION_WEBHOOK_URL?.startsWith('https://')&&env.NOTIFICATION_WEBHOOK_SECRET&&env.NOTIFICATION_WEBHOOK_IDEMPOTENT==='true'){

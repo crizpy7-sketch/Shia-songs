@@ -15,7 +15,7 @@ export class Intake {
  }
  async submit(body){
   const {action,idempotency_key,website,...payload}=body;
-  if(website||!UUID.test(idempotency_key||'')||!packageFor(payload.package_key)||typeof payload.customer_name!=='string'||!payload.customer_name.trim()||payload.customer_name.length>200||typeof payload.customer_email!=='string'||payload.customer_email.length>254||!/^\S+@\S+\.\S+$/.test(payload.customer_email)||!payload.answers||typeof payload.answers!=='object'||Array.isArray(payload.answers))throw new PaymentError('No se pudo enviar la solicitud.');
+  if(website||typeof idempotency_key!=='string'||!UUID.test(idempotency_key)||!packageFor(payload.package_key)||typeof payload.customer_name!=='string'||!payload.customer_name.trim()||payload.customer_name.length>200||typeof payload.customer_email!=='string'||payload.customer_email.length>254||!/^\S+@\S+\.\S+$/.test(payload.customer_email)||!payload.answers||typeof payload.answers!=='object'||Array.isArray(payload.answers))throw new PaymentError('No se pudo enviar la solicitud.');
   const files=payload.files;
   if(!Array.isArray(files)||files.length>20||files.some(f=>!f||typeof f!=='object'||typeof f.name!=='string'||f.name.length>255||!types.has(f.type)||!Number.isInteger(f.size)||f.size<=0||f.size>50*1024*1024))throw new PaymentError('No se pudo enviar la solicitud.');
   if(files.length&&!this.storage)throw new PaymentError('No se pudo enviar la solicitud.',503);
@@ -28,7 +28,7 @@ export class Intake {
   return {order_id:inquiry.order_id,order_number:inquiry.order_id,submission_token:this.token(inquiry.order_id),uploads};
  }
  async finalize({order_id,submission_token,file_manifest}){
-  if(!UUID.test(order_id||'')||!sameSecret(submission_token,this.token(order_id)))throw new PaymentError('No se pudo enviar la solicitud.',403);
+  if(typeof order_id!=='string'||!UUID.test(order_id)||!sameSecret(submission_token,this.token(order_id)))throw new PaymentError('No se pudo enviar la solicitud.',403);
   return this.store.transaction(async client=>{
    const {rows}=await client.query('SELECT * FROM shia_intake.inquiries WHERE order_id=$1 FOR UPDATE',[order_id]);const row=rows[0];
    if(!row)throw new PaymentError('No se pudo enviar la solicitud.',404);

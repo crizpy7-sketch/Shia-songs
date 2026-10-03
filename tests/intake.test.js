@@ -88,3 +88,21 @@ test('Paid-alert insertion failure rolls back webhook receipt, paid state and fu
 test('Isolated intake config is opt-in and refuses shared databases or invalid origin',()=>{
  const env={INTAKE_ENABLED:'true',DATABASE_URL:'postgresql://localhost/shia_local',INTAKE_TOKEN_SECRET:'a'.repeat(32)};assert.equal(readConfig({}).intakeEnabled,false);assert.equal(readConfig(env).intakeEnabled,true);assert.equal(readConfig({...env,APP_ORIGIN:'https://example.invalid/path'}).intakeEnabled,false);assert.equal(readConfig({...env,DATABASE_URL:'postgresql://db.bjnkgxkcbbnbtazelsjs.supabase.co/postgres'}).databaseUrl,null);
 });
+test('Malformed credentials/packages fail safely without saving an inquiry',()=>fixture(async({db,intake})=>{
+ const a=await intake.handle(body());for(const token of [42,{},[],null])await assert.rejects(()=>intake.handle({...finalFor(a),submission_token:token}),{status:403});
+ for(const idempotency_key of [[randomUUID()],{},42,null])await assert.rejects(()=>intake.handle({...body(),idempotency_key}),{status:400});
+ for(const package_key of [['songs'],{},null])await assert.rejects(()=>intake.handle({...body(),package_key}),{status:400});assert.equal((await rows(db,'shia_intake.inquiries')).length,1);
+}));
+test('Private reviewer can inspect finalized inquiries and short-lived file URLs, but cannot mutate or read tokens',()=>fixture(async({db,intake,store})=>{
+ const {reviewInquiry}=await import('../server/inquiry-review.js');await db.exec(await readFile('server/roles.sql','utf8'));
+ const a=await intake.handle(body());await intake.handle(finalFor(a));const draft=await intake.handle(body());
+ await db.exec('SET ROLE shia_review');const result=await reviewInquiry({store},a.order_id);assert.equal(result.payload.customer_email,'fake@example.invalid');assert.equal(result.payment_status,'pending');assert(!JSON.stringify(result).includes('token_hash'));assert.equal(result.request_hash,undefined);
+ await assert.rejects(()=>reviewInquiry({store},draft.order_id),{status:404});await assert.rejects(()=>reviewInquiry({store},'invalid'),{status:400});
+ await assert.rejects(()=>db.query('SELECT token_hash FROM shia_payments.orders'),/permission denied/);await assert.rejects(()=>db.query("UPDATE shia_intake.inquiries SET state='draft'"),/permission denied/);await assert.rejects(()=>db.query('SELECT * FROM shia_intake.notifications'),/permission denied/);await db.exec('RESET ROLE');
+ const input=body();input.files=[{name:'fake.jpg',type:'image/jpeg',size:4}];intake.storage={verify:async()=>true};const fileOrder=await intake.handle(input);const file={...input.files[0],path:fileOrder.uploads[0].path,role:'slideshow',order:1,caption:'Fake caption'};await intake.handle(finalFor(fileOrder,[file]));
+ const paths=[];await db.exec('SET ROLE shia_review');const withFiles=await reviewInquiry({store,storage:{read:async path=>{paths.push(path);return 'https://private.example.invalid/fake-expiring';}}},fileOrder.order_id,{files:true});assert.deepEqual(paths,[file.path]);assert.equal(withFiles.manifest[0].view_url,'https://private.example.invalid/fake-expiring');await db.exec('RESET ROLE');
+}));
+test('Resend empty acknowledgement is treated as failure rather than successful delivery',async()=>{
+ const env={NOTIFICATION_PROVIDER:'resend',RESEND_API_KEY:'fake',NOTIFICATION_FROM:'fake@example.invalid',NOTIFICATION_TO:'fake@example.invalid'};
+ const provider=notificationProvider(env,async()=>({ok:true,json:async()=>({id:''})}));await assert.rejects(()=>provider.send({key:'fake-key',kind:'inquiry',orderId:'fake'}),/provider_invalid_response/);
+});

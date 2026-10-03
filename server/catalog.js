@@ -2,7 +2,7 @@ export const PACKAGES=Object.freeze({
   songs:Object.freeze({key:'songs',name:'Dos canciones personalizadas + letras',amount:2000,currency:'usd',priceEnv:'STRIPE_PRICE_SONGS'}),
   slideshow:Object.freeze({key:'slideshow',name:'Dos canciones + letras + un video slideshow',amount:5000,currency:'usd',priceEnv:'STRIPE_PRICE_SLIDESHOW'})
 });
-export function packageFor(key){return Object.hasOwn(PACKAGES,key)?PACKAGES[key]:null;}
+export function packageFor(key){return typeof key==='string'&&Object.hasOwn(PACKAGES,key)?PACKAGES[key]:null;}
 export function readConfig(env=process.env){
   const origin=env.APP_ORIGIN||'http://localhost:3000';
   let validOrigin=false,validTerms=false;

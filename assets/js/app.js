@@ -321,7 +321,7 @@ function addExtras(list){
 }
 function renderPhotos(){
   const host=$('#thumbs');if(!host)return;
-  host.innerHTML=photos.map((p,i)=>`<div class="thumb"><img src="${p.url}" alt="${esc(t('Foto {number}',{number:i+1}))}" data-i18n-alt="Foto {number}" data-i18n-params="${esc(JSON.stringify({number:i+1}))}"><div class="tb"><span class="num">${i+1}</span><button type="button" data-up="${i}" aria-label="${esc(t('Mover foto {number} antes',{number:i+1}))}" data-i18n-aria-label="Mover foto {number} antes" data-i18n-params="${esc(JSON.stringify({number:i+1}))}"${i?'':' disabled'}>${icon('up')}</button><button type="button" data-down="${i}" aria-label="${esc(t('Mover foto {number} después',{number:i+1}))}" data-i18n-aria-label="Mover foto {number} después" data-i18n-params="${esc(JSON.stringify({number:i+1}))}"${i===photos.length-1?' disabled':''}>${icon('down')}</button><button type="button" class="rm" data-rm="${i}" aria-label="${esc(t('Quitar foto {number}',{number:i+1}))}" data-i18n-aria-label="Quitar foto {number}" data-i18n-params="${esc(JSON.stringify({number:i+1}))}">${icon('remove')}</button></div><input class="cap" data-cap="${i}" aria-label="${esc(t('Descripción de la foto {number}',{number:i+1}))}" data-i18n-aria-label="Descripción de la foto {number}" data-i18n-params="${esc(JSON.stringify({number:i+1}))}" placeholder="${esc(t('¿Qué momento es?'))}" data-i18n-placeholder="¿Qué momento es?" value="${esc(p.caption)}"></div>`).join('');
+  host.innerHTML=photos.map((p,i)=>`<div class="thumb"><img src="${p.url}" alt="${esc(t('Foto {number}',{number:i+1}))}" data-i18n-alt="Foto {number}" data-i18n-params="${esc(JSON.stringify({number:i+1}))}"><div class="tb"><span class="num">${i+1}</span><button type="button" data-up="${i}" aria-label="${esc(t('Mover foto {number} antes',{number:i+1}))}" data-i18n-aria-label="Mover foto {number} antes" data-i18n-params="${esc(JSON.stringify({number:i+1}))}"${i?'':' disabled'}>${icon('up')}</button><button type="button" data-down="${i}" aria-label="${esc(t('Mover foto {number} después',{number:i+1}))}" data-i18n-aria-label="Mover foto {number} después" data-i18n-params="${esc(JSON.stringify({number:i+1}))}"${i===photos.length-1?' disabled':''}>${icon('down')}</button><button type="button" class="rm" data-rm="${i}" aria-label="${esc(t('Quitar foto {number}',{number:i+1}))}" data-i18n-aria-label="Quitar foto {number}" data-i18n-params="${esc(JSON.stringify({number:i+1}))}">${icon('remove')}</button></div><input class="cap" maxlength="2000" data-cap="${i}" aria-label="${esc(t('Descripción de la foto {number}',{number:i+1}))}" data-i18n-aria-label="Descripción de la foto {number}" data-i18n-params="${esc(JSON.stringify({number:i+1}))}" placeholder="${esc(t('¿Qué momento es?'))}" data-i18n-placeholder="¿Qué momento es?" value="${esc(p.caption)}"></div>`).join('');
   const mb=photos.reduce((n,p)=>n+p.file.size,0)/1048576;
   setText($('#photoCount'),photos.length?(photos.length===1?'{count} foto · {mb} MB':'{count} fotos · {mb} MB'):'Sin fotos todavía',{count:photos.length,mb:mb.toFixed(1)});
   $$('[data-up]',host).forEach(b=>b.onclick=()=>move(+b.dataset.up,-1));
@@ -373,8 +373,10 @@ $('#back').onclick=()=>{if(cur){cur--;ui()}};
 $('#save').onclick=()=>save(true);
 f.addEventListener('input',()=>save());
 
+// Native browser warning protects an in-memory pending attempt from accidental navigation.
+window.addEventListener('beforeunload',event=>{if(pendingAttempt||pendingSubmission){event.preventDefault();event.returnValue='';}});
 /* ---------- submit ---------- */
-async function callIntake(body){if(PREVIEW_MODE)throw new Error('Vista previa: no se envían solicitudes ni archivos.');const res=await fetch(LOCAL_INTAKE?'/api/intake':EDGE_URL,{method:'POST',headers:LOCAL_INTAKE?{'Content-Type':'application/json'}:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify(body)});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||'No se pudo enviar la solicitud.');return data}
+async function callIntake(body){if(PREVIEW_MODE)throw new Error('Vista previa: no se envían solicitudes ni archivos.');const res=await fetch(LOCAL_INTAKE?'/api/intake':EDGE_URL,{method:'POST',headers:LOCAL_INTAKE?{'Content-Type':'application/json'}:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify(body)});const data=await res.json().catch(()=>({}));if(!res.ok)throw Object.assign(new Error(data.error||'No se pudo enviar la solicitud.'),{intakeStatus:res.status});return data}
 f.onsubmit=async e=>{
   e.preventDefault();if(f.classList.contains('submitting')||(!pendingAttempt&&!valid()))return;
   const submit=$('#submit');setText(submit,'Enviando…');f.classList.add('submitting');
@@ -417,7 +419,13 @@ f.onsubmit=async e=>{
     setText($('#doneMessage'),'Su número de solicitud es #{number}. Guárdelo para referencia.',{number:final.order_number});
     $('#done').showModal();
     $$('input,textarea',f).forEach(n=>n.disabled=false);$('#back').disabled=false;$('#save').disabled=false;f.reset();resetPhotos();cur=0;ui();
-  }catch(err){const source=Object.hasOwn(TRANSLATIONS,err.message)?err.message:'Ocurrió un error al enviar.';showError(source);const errorHost=$('#err');errorHost.removeAttribute('data-i18n');errorHost.innerHTML=localized(source,err.i18nParams||{})+(pendingSubmission?' '+localized('Conserve el número de solicitud {number}. No cree una segunda solicitud si ya se envió; reintentar solo continúa esta solicitud.',{number:pendingSubmission.created.order_number||pendingSubmission.created.order_id}):'')}
+  }catch(err){
+    // Only the isolated API's definitive validation rejection proves no draft was committed.
+    // Network failures, conflicts, throttling and server/storage failures retain the same attempt.
+    if(LOCAL_INTAKE&&!pendingSubmission&&[400,413,415].includes(err.intakeStatus)){
+      pendingAttempt=null;$$('input,textarea',f).forEach(n=>n.disabled=false);$('#back').disabled=false;$('#save').disabled=false;
+    }
+    const source=Object.hasOwn(TRANSLATIONS,err.message)?err.message:'Ocurrió un error al enviar.';showError(source);const errorHost=$('#err');errorHost.removeAttribute('data-i18n');errorHost.innerHTML=localized(source,err.i18nParams||{})+(pendingSubmission?' '+localized('Conserve el número de solicitud {number}. No cree una segunda solicitud si ya se envió; reintentar solo continúa esta solicitud.',{number:pendingSubmission.created.order_number||pendingSubmission.created.order_id}):'')}
   finally{setText(submit,'Enviar formulario');f.classList.remove('submitting')}
 };
 $('#close').onclick=()=>$('#done').close();
