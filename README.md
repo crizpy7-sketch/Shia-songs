@@ -53,6 +53,8 @@ npm run test:browser
 
 ## Deployment shape
 
+The [prepared Edge adaptation and exact activation sequence](docs/EDGE_DEPLOYMENT.md) now implement the reviewed Pages/Supabase route locally, with v1 preserved and two unapplied SHIA-only migrations. See [local Edge evidence](docs/EDGE_QA.md).
+
 The [2026-10-03 activation review](docs/ACTIVATION_ROUTE.md) proposes retaining Pages and the existing Supabase edge intake through a narrowly reviewed SHIA-only adaptation. The Node server is a tested isolated fallback; its migrations must not be applied directly to the shared project.
 
 

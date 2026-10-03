@@ -1,4 +1,5 @@
 import { createHash,createHmac,timingSafeEqual } from 'node:crypto';
+import { checkoutReturnUrls } from './return-urls.js';
 import { packageFor } from './catalog.js';
 export const hashToken=token=>createHash('sha256').update(token).digest('hex');
 export function sameSecret(a,b){if(typeof a!=='string'||typeof b!=='string')return false;const x=Buffer.from(a),y=Buffer.from(b);return x.length>0&&x.length===y.length&&timingSafeEqual(x,y);}
@@ -20,6 +21,7 @@ export class Payments{
     return this.store.withOrder(orderId,async(order,tx)=>{
       if(!order||!sameSecret(order.token_hash,hashToken(paymentToken))||new Date(order.token_expires_at)<=new Date())throw new PaymentError('El acceso al pago no es válido o ha vencido.',403);
       if(order.package_key!==packageKey)throw new PaymentError('El paquete no coincide con su solicitud.',403);
+      const canonicalOrderId=order.order_id;
       if(order.payment_status==='paid')throw new PaymentError('Esta solicitud ya tiene un pago confirmado.',409);
       if(order.checkout_session_id){
         const prior=await this.stripe.checkout.sessions.retrieve(order.checkout_session_id);
@@ -31,12 +33,14 @@ export class Payments{
       if(price.livemode!==false||price.active!==true||price.type!=='one_time'||price.unit_amount!==p.amount||price.currency!==p.currency)throw new PaymentError('El precio de este paquete todavía no está listo.',503);
       const attempt=order.checkout_attempt+1;
       // Eight random letters distinguish this integration in Stripe Workbench; the value is durable for retries.
-      const label=`shia-songs-${[...createHmac('sha256',this.config.tokenSecret).update(`integration:${orderId}:${attempt}`).digest().subarray(0,8)].map(x=>String.fromCharCode(97+x%26)).join('')}`;
-      const session=await this.stripe.checkout.sessions.create({mode:'payment',line_items:[{price:priceId,quantity:1}],client_reference_id:orderId,metadata:{shia_order_id:orderId,package_key:p.key},success_url:`${this.config.origin}/payment-status.html`,cancel_url:`${this.config.origin}/?checkout=cancelled#paquetes`,consent_collection:{terms_of_service:'required'},integration_identifier:label},{idempotencyKey:`shia:${orderId}:${p.key}:${attempt}:v1`});
+      const label=`shia-songs-${[...createHmac('sha256',this.config.tokenSecret).update(`integration:${canonicalOrderId}:${attempt}`).digest().subarray(0,8)].map(x=>String.fromCharCode(97+x%26)).join('')}`;
+      const args={mode:'payment',line_items:[{price:priceId,quantity:1}],client_reference_id:canonicalOrderId,metadata:{shia_order_id:canonicalOrderId,package_key:p.key},...checkoutReturnUrls(this.config),consent_collection:{terms_of_service:'required'},integration_identifier:label};
+      if(tx.reserveAttempt)await tx.reserveAttempt({attempt,requestHash:hashToken(JSON.stringify(args))});
+      const session=await this.stripe.checkout.sessions.create(args,{idempotencyKey:`shia:${canonicalOrderId}:${p.key}:${attempt}:v1`});
       if(session.livemode!==false||!session.url?.startsWith('https://checkout.stripe.com/'))throw new PaymentError('La sesión de pago no es válida.',502);
       await tx.saveSession({sessionId:session.id,attempt,integrationIdentifier:label,priceId,amount:p.amount,currency:p.currency});
       return {url:session.url};
-    });
+    },{tokenHash:hashToken(paymentToken),packageKey});
   }
   async handleEvent(event){
     this.requireReady();

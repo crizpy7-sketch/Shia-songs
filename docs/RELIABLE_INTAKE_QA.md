@@ -28,3 +28,6 @@ Recipient handoff updated after the user selected `crizpy7@gmail.com` on 2026-10
 - The Pages/Supabase route requires the audited v1 source and exact SHIA DDL, an edge adaptation and explicit SHIA-only shared-project migration approval. The standalone migrations remain guarded against that shared project. No blind shared migration or edge rewrite was produced.
 
 No live submissions, emails, charges, historical inquiry reads/replay, secret configuration, hosting purchases, provider configuration, pushes, merges or deployments occurred. Automatic tab-restart recovery and a browser-based viewer for the isolated ledger remain unimplemented; the native warning and private CLI reduce the corresponding operational gaps.
+
+
+The deployed-schema-compatible v2 Edge preparation is now documented in [Edge QA](EDGE_QA.md) and [its activation handoff](EDGE_DEPLOYMENT.md). The earlier source-input blocker has been resolved. This adds local tests and unapplied migrations; it does not activate services.

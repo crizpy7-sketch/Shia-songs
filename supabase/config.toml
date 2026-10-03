@@ -1,0 +1,11 @@
+# REVIEW ONLY. No project link or deploy has been performed.
+# Public intake/config/checkout use exact Origin, a durable rate budget and order capabilities.
+# Stripe webhook authenticates its raw bytes/signature; worker uses its own vault-held secret.
+[functions.shia-order-intake-v2]
+verify_jwt = false
+[functions.shia-song-payments]
+verify_jwt = false
+[functions.shia-stripe-webhook]
+verify_jwt = false
+[functions.shia-song-notifications]
+verify_jwt = false

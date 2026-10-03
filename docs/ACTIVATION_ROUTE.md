@@ -1,5 +1,7 @@
 # SHIA Songs activation route — 2026-10-03
 
+The audited source/schema have now arrived and a compatible v2 adaptation is prepared locally. Read [the current Edge deployment handoff](EDGE_DEPLOYMENT.md) for concrete files, tests and approvals; the earlier source-input blocker below is resolved.
+
 This document supersedes the assumption that another Node host must be purchased. It is a deployment proposal, not authorization or a deployed edge implementation.
 
 ## Verified local state
@@ -35,7 +37,7 @@ Required source adaptation before publication:
 6. Use raw request bytes/text and signature verification for the edge Stripe webhook; the documented edge approach uses asynchronous verification with the Web Crypto provider. Disable gateway JWT verification **only** for the Stripe-signed webhook if required; do not treat an unsigned public endpoint as a payment confirmation. Persist the unique event, verified paid state, paid alert and fulfillment handoff atomically. The success page does not establish payment success.
 7. Run notification dispatch as a separately authenticated scheduled edge worker with durable leases, fencing, stable provider idempotency keys and retry/blocked state. Store its invocation credential in the approved vault. Existing optional environment names map as follows: `SHIA_ADMIN_EMAIL=crizpy7@gmail.com`, reviewed `SHIA_FROM_EMAIL`, and `RESEND_API_KEY`; the standalone sample uses `NOTIFICATION_TO`, `NOTIFICATION_FROM` and `RESEND_API_KEY`. Do not rename or configure actual secrets without approval. The provider's 24-hour deduplication limit and operator review after expiry still apply. Worker/provider HTTP acceptance is distinct from confirmed inbox delivery.
 
-No shared-project SQL or v1 source replacement has been authored blindly in this resume. After receiving exact source/DDL and approving this architecture, prepare that small patch and migration as a separate reviewable change, and run it against a disposable local clone with fake providers before requesting deployment approval.
+The later audited-schema adaptation is now recorded in the Edge handoff; v1 is preserved and new named migrations are prepared, not applied. No shared-project SQL or v1 source replacement was authored blindly. After receiving exact source/DDL and approving this architecture, prepare that small patch and migration as a separate reviewable change, and run it against a disposable local clone with fake providers before requesting deployment approval.
 
 ## Publication and activation approvals
 

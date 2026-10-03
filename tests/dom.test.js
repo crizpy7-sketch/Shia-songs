@@ -1,10 +1,12 @@
 import { OCCASION_PHOTOS } from '../assets/js/occasion-photos.js';
 import test from 'node:test';import assert from 'node:assert/strict';import { readFile } from 'node:fs/promises';import { JSDOM } from 'jsdom';import { validateUpload } from '../assets/js/upload-policy.js';import { buildSync } from 'esbuild';
 const html=await readFile('index.html','utf8');const script=(await readFile('assets/js/app.js','utf8')).replace(/^import .*;$/gm,'');
-function setup({localIntake=false}={}){
+function setup({localIntake=false,adminUser=false}={}){
  const dom=new JSDOM(localIntake?html.replace('name="shia-intake-endpoint" content=""','name="shia-intake-endpoint" content="/api/intake"'):html,{url:'http://localhost:3000',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;const calls=[];
  w.scrollTo=()=>{};w.HTMLElement.prototype.scrollIntoView=()=>{};w.CSS={escape:s=>String(s).replace(/[\\"]/g,'\\$&')};w.URL.createObjectURL=()=> 'blob:test';w.URL.revokeObjectURL=()=>{};w.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','')};w.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open')};
- w.createClient=()=>({auth:{getUser:async()=>({data:{user:null}})},storage:{from:()=>({uploadToSignedUrl:async()=>({error:null})})}});w.validateUpload=validateUpload;w.OCCASION_PHOTOS=OCCASION_PHOTOS;w.eval(buildSync({entryPoints:['assets/js/i18n.js'],bundle:true,write:false,format:'iife',globalName:'TestI18n'}).outputFiles[0].text);w.eval('var {t,getLanguage,setLanguage,applyTranslations,TRANSLATIONS}=TestI18n;');w.eval(buildSync({entryPoints:['assets/js/payments.js'],bundle:true,write:false,format:'iife',globalName:'TestPayments'}).outputFiles[0].text);w.createPaymentUI=opts=>w.TestPayments.createPaymentUI({...opts,fetcher:async()=>({ok:false})});
+ w.createClient=()=>({auth:{getUser:async()=>({data:{user:adminUser?{id:'fake-admin'}:null}})},
+ from:table=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{role:'owner'}})}),order:async()=>({data:table==='shia_song_orders'?[{id:'559a7da0-6206-4eb0-8e53-a78d48994209',order_number:1,title:'Fake local order',customer_name:'Fake customer',customer_email:'fake@example.invalid',customer_phone:'5550100000',created_at:'2026-10-03T00:00:00Z',status:'new',answers:{},file_manifest:[]}]:[]})})}),
+ rpc:async()=>({data:[{order_id:'559a7da0-6206-4eb0-8e53-a78d48994209',payment_status:'paid',paid_at:'2026-10-03T00:00:00Z'}]}),storage:{from:()=>({uploadToSignedUrl:async()=>({error:null})})}});w.validateUpload=validateUpload;w.OCCASION_PHOTOS=OCCASION_PHOTOS;w.eval(buildSync({entryPoints:['assets/js/i18n.js'],bundle:true,write:false,format:'iife',globalName:'TestI18n'}).outputFiles[0].text);w.eval('var {t,getLanguage,setLanguage,applyTranslations,TRANSLATIONS}=TestI18n;');w.eval(buildSync({entryPoints:['assets/js/payments.js'],bundle:true,write:false,format:'iife',globalName:'TestPayments'}).outputFiles[0].text);w.createPaymentUI=opts=>w.TestPayments.createPaymentUI({...opts,fetcher:async()=>({ok:false})});
  w.fetch=async(url,opts)=>{const body=JSON.parse(opts.body);calls.push(body);return {ok:true,json:async()=>body.action==='submit'?{order_id:'559a7da0-6206-4eb0-8e53-a78d48994209',order_number:'QA-ONLY',submission_token:'mock',uploads:body.files.map((_,i)=>({path:'test/'+i,token:'mock'}))}:{order_number:'QA-ONLY'}};};
  w.eval(script);return {dom,w,d:w.document,calls};
 }
@@ -61,4 +63,8 @@ test('Isolated submit validation rejection unlocks correction; uncertain failure
   const warning=new w.Event('beforeunload',{cancelable:true});w.dispatchEvent(warning);assert.equal(warning.defaultPrevented,true);
   w.setLanguage('es');await send();assert.deepEqual(requests[1],requests[2]);assert.equal(d.querySelector('#back').disabled,true);
  }finally{dom.window.close();}
+});
+
+test('Existing authorized admin can find an opaque alert UUID and see server-verified v2 paid state',async()=>{
+ const {dom,w,d}=setup({localIntake:true,adminUser:true});try{d.querySelector('#footerAdmin').click();await new Promise(r=>setTimeout(r,0));assert.match(d.querySelector('#ordersList').textContent,/Pago: Confirmado/);const search=d.querySelector('#searchOrders');search.value='559a7da0-6206-4eb0-8e53-a78d48994209';search.dispatchEvent(new w.Event('input'));assert.equal(d.querySelectorAll('#ordersList .order-card').length,1);assert.match(d.querySelector('#ordersList').textContent,/Fake local order/);}finally{dom.window.close();}
 });

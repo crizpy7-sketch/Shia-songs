@@ -7,7 +7,8 @@ import { OCCASION_PHOTOS } from './occasion-photos.js';
 const PREVIEW_MODE=false;
 const SUPABASE_URL="https://bjnkgxkcbbnbtazelsjs.supabase.co";
 const SUPABASE_KEY="sb_publishable_F49fzNl_CTWUdJy5ZdMDMw_MFrIOXw-";
-const LOCAL_INTAKE=document.querySelector('meta[name="shia-intake-endpoint"]')?.content==='/api/intake';
+const CONFIGURED_INTAKE=document.querySelector('meta[name="shia-intake-endpoint"]')?.content||'';
+const LOCAL_INTAKE=!!CONFIGURED_INTAKE;
 const EDGE_URL=`${SUPABASE_URL}/functions/v1/shia-order-intake`;
 const supabase=PREVIEW_MODE?null:createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=s=>document.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)], esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
@@ -376,7 +377,7 @@ f.addEventListener('input',()=>save());
 // Native browser warning protects an in-memory pending attempt from accidental navigation.
 window.addEventListener('beforeunload',event=>{if(pendingAttempt||pendingSubmission){event.preventDefault();event.returnValue='';}});
 /* ---------- submit ---------- */
-async function callIntake(body){if(PREVIEW_MODE)throw new Error('Vista previa: no se envían solicitudes ni archivos.');const res=await fetch(LOCAL_INTAKE?'/api/intake':EDGE_URL,{method:'POST',headers:LOCAL_INTAKE?{'Content-Type':'application/json'}:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify(body)});const data=await res.json().catch(()=>({}));if(!res.ok)throw Object.assign(new Error(data.error||'No se pudo enviar la solicitud.'),{intakeStatus:res.status});return data}
+async function callIntake(body){if(PREVIEW_MODE)throw new Error('Vista previa: no se envían solicitudes ni archivos.');if(LOCAL_INTAKE){const target=new URL(CONFIGURED_INTAKE,document.baseURI);if((target.protocol!=='https:'&&target.origin!==location.origin)||target.username||target.password||target.search||target.hash)throw new Error('No se pudo enviar la solicitud.');}const res=await fetch(LOCAL_INTAKE?CONFIGURED_INTAKE:EDGE_URL,{method:'POST',headers:LOCAL_INTAKE?{'Content-Type':'application/json'}:{'Content-Type':'application/json','apikey':SUPABASE_KEY},body:JSON.stringify(body)});const data=await res.json().catch(()=>({}));if(!res.ok)throw Object.assign(new Error(data.error||'No se pudo enviar la solicitud.'),{intakeStatus:res.status});return data}
 f.onsubmit=async e=>{
   e.preventDefault();if(f.classList.contains('submitting')||(!pendingAttempt&&!valid()))return;
   const submit=$('#submit');setText(submit,'Enviando…');f.classList.add('submitting');
@@ -440,14 +441,16 @@ function authError(msg){const e=$('#authError');e.textContent=msg;e.classList.ad
 $('#loginForm').onsubmit=async e=>{e.preventDefault();if(PREVIEW_MODE)return authError('Vista previa: el acceso administrativo está desactivado.');$('#authError').classList.remove('show');const {error}=await supabase.auth.signInWithPassword({email:$('#adminEmail').value,password:$('#adminPassword').value});if(error)return authError(error.message);await checkAdminSession()};
 async function checkAdminSession(){if(PREVIEW_MODE){$('#adminAuth').classList.remove('hidden');$('#adminPanel').classList.add('hidden');return}const {data:{user}}=await supabase.auth.getUser();if(!user){$('#adminAuth').classList.remove('hidden');$('#adminPanel').classList.add('hidden');return}let {data:membership}=await supabase.from('shia_admins').select('role').eq('user_id',user.id).maybeSingle();if(!membership){await supabase.auth.signOut();return authError('Esta cuenta no está autorizada para administrar solicitudes.')}$('#adminAuth').classList.add('hidden');$('#adminPanel').classList.remove('hidden');await loadOrders()}
 $('#logoutBtn').onclick=async()=>{await supabase.auth.signOut();checkAdminSession()};$('#refreshOrders').onclick=loadOrders;$('#searchOrders').oninput=renderOrders;$('#statusFilter').onchange=renderOrders;$('#typeFilter').onchange=renderOrders;
-async function loadOrders(){const {data,error}=await supabase.from('shia_song_orders').select('*').order('created_at',{ascending:false});if(error){$('#ordersList').innerHTML=`<div class="error show">${esc(error.message)}</div>`;return}orders=data||[];renderStats();renderOrders()}
+async function loadOrders(){const {data,error}=await supabase.from('shia_song_orders').select('*').order('created_at',{ascending:false});if(error){$('#ordersList').innerHTML=`<div class="error show">${esc(error.message)}</div>`;return}orders=data||[];
+  if(LOCAL_INTAKE&&orders.length){try{for(let i=0;i<orders.length;i+=200){const {data:states,error:stateError}=await supabase.rpc('shia_edge_admin_payment_status',{p_order_ids:orders.slice(i,i+200).map(o=>o.id)});if(stateError)break;for(const state of states||[]){const order=orders.find(o=>o.id===state.order_id);if(order)order.payment_status=state.payment_status;}}}catch{/* Existing v1 admin remains usable if the optional v2 RPC is unavailable. */}}
+  renderStats();renderOrders()}
 function renderStats(){const counts={new:0,active:0,completed:0,total:orders.length};orders.forEach(o=>{if(o.status==='new')counts.new++;if(['reviewing','lyrics_in_progress','waiting_on_customer','song_in_progress'].includes(o.status))counts.active++;if(['completed','delivered'].includes(o.status))counts.completed++});$('#stats').innerHTML=[['Total',counts.total],['Nuevas',counts.new],['En proceso',counts.active],['Completadas',counts.completed]].map(([k,v])=>`<div class="stat"><span>${k}</span><b>${v}</b></div>`).join('')}
 const labels={new:'Nueva',reviewing:'En revisión',lyrics_in_progress:'Letra en progreso',waiting_on_customer:'Esperando cliente',song_in_progress:'Canción en progreso',completed:'Completada',delivered:'Entregada',cancelled:'Cancelada'};
 const orderType=o=>(o.answers||{})['Tipo de canción']||'Aniversario de bodas';
 function slideshowFiles(o){const list=(o.file_manifest||[]).filter(x=>x.role?x.role==='slideshow':/^image\//.test(x.type||''));return list.slice().sort((a,b)=>(a.order??0)-(b.order??0))}
 function renderOrders(){
   const q=$('#searchOrders').value.toLowerCase(),sf=$('#statusFilter').value,tf=$('#typeFilter').value;
-  const list=orders.filter(o=>(!sf||o.status===sf)&&(!tf||orderType(o)===tf)&&(!q||`${o.order_number} ${o.customer_name} ${o.customer_email} ${o.couple_names||''}`.toLowerCase().includes(q)));
+  const list=orders.filter(o=>(!sf||o.status===sf)&&(!tf||orderType(o)===tf)&&(!q||`${o.id} ${o.order_number} ${o.customer_name} ${o.customer_email} ${o.couple_names||''}`.toLowerCase().includes(q)));
   $('#ordersList').innerHTML=list.length?list.map(orderCard).join(''):'<div class="order-card">No hay solicitudes que coincidan.</div>';
   $$('[data-save]').forEach(b=>b.onclick=()=>saveOrder(b.dataset.save));
   $$('[data-file]').forEach(a=>a.onclick=e=>openFile(e,a.dataset.file));
@@ -456,10 +459,11 @@ function renderOrders(){
 function orderCard(o){
   const answers=Object.entries(o.answers||{}).filter(([k,v])=>k!=='Confirmación'&&String(v??'').trim()).map(([k,v])=>`<div class="answer"><b>${esc(k)}</b>${esc(v)}</div>`).join('');
   const opts=Object.entries(labels).map(([v,l])=>`<option value="${v}" ${o.status===v?'selected':''}>${l}</option>`).join('');
+  const payment=o.payment_status?`<div class="order-meta">Pago: ${esc(({paid:'Confirmado',pending:'Pendiente',failed:'Fallido',expired:'Sesión vencida'})[o.payment_status]||'Sin confirmar')}</div>`:'';
   const fileLinks=(o.file_manifest||[]).map(x=>`<a href="#" class="filelink" data-file="${esc(x.path)}">${esc(x.name)}</a>`).join('');
   const pics=slideshowFiles(o);
   const gallery=pics.length?`<h4>Slideshow · ${pics.length} ${pics.length===1?'foto':'fotos'}</h4><button class="btn secondary" data-gallery="${o.id}">Ver fotos en orden</button><div class="gallery" id="gal-${o.id}"></div>`:'';
-  return `<article class="order-card"><div class="order-top"><div><h3>#${o.order_number} · ${esc(o.title||o.couple_names||'Canción personalizada')}</h3><div class="order-meta"><span class="badge">${esc(orderType(o))}</span> ${esc(o.customer_name)} · ${esc(o.customer_email)} · ${esc(o.customer_phone)} · ${new Date(o.created_at).toLocaleString()}</div></div><select id="status-${o.id}">${opts}</select></div><div class="order-grid"><div><h4>Respuestas</h4><div class="answer-list">${answers||'<div class="answer">Sin respuestas.</div>'}</div>${gallery}${fileLinks?`<h4>Archivos privados</h4><div class="file-links">${fileLinks}</div>`:''}</div><div><h4>Notas internas</h4><textarea class="notes" id="notes-${o.id}" placeholder="Ideas para la letra, seguimiento, cambios…">${esc(o.internal_notes||'')}</textarea><div class="save-row"><button class="btn primary" data-save="${o.id}">Guardar cambios</button></div></div></div></article>`;
+  return `<article class="order-card"><div class="order-top"><div><h3>#${o.order_number} · ${esc(o.title||o.couple_names||'Canción personalizada')}</h3><div class="order-meta"><span class="badge">${esc(orderType(o))}</span> ${esc(o.customer_name)} · ${esc(o.customer_email)} · ${esc(o.customer_phone)} · ${new Date(o.created_at).toLocaleString()}</div>${payment}</div><select id="status-${o.id}">${opts}</select></div><div class="order-grid"><div><h4>Respuestas</h4><div class="answer-list">${answers||'<div class="answer">Sin respuestas.</div>'}</div>${gallery}${fileLinks?`<h4>Archivos privados</h4><div class="file-links">${fileLinks}</div>`:''}</div><div><h4>Notas internas</h4><textarea class="notes" id="notes-${o.id}" placeholder="Ideas para la letra, seguimiento, cambios…">${esc(o.internal_notes||'')}</textarea><div class="save-row"><button class="btn primary" data-save="${o.id}">Guardar cambios</button></div></div></div></article>`;
 }
 async function showGallery(id){
   const o=orders.find(x=>x.id===id),host=$(`#gal-${id}`);if(!o||!host)return;
