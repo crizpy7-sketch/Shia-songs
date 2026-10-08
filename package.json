@@ -14,7 +14,8 @@
     "test:browser": "node tests/browser.mjs && node tests/motion-browser.mjs && node tests/vinyl-bilingual-browser.mjs && node tests/hero-refinement-browser.mjs",
     "check": "npm run build && npm test && npm run test:browser",
     "build:preview": "node scripts/build-preview.mjs",
-    "render:film": "node scripts/render-story-film.cjs && node scripts/render-story-film.cjs --es"
+    "render:film": "node scripts/render-story-film.cjs && node scripts/render-story-film.cjs --es",
+    "remix:hero-song": "node scripts/hero-song.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.102.0",

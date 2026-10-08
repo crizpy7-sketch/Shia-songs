@@ -6,7 +6,7 @@ export function initBrandFilm() {
   const hero = get('heroFilm'), story = get('storyFilm'), dialog = get('brandFilmDialog');
   if (!hero || !story || !dialog) return;
   const preference = matchMedia('(prefers-reduced-motion: reduce)');
-  const pause = get('filmPause'), sound = get('filmSound'), open = get('filmOpen');
+  const pause = get('filmPause'), sound = get('filmSound'), open = get('filmOpen'), song = get('heroSongLink');
   const picker = get('picker'), customer = get('customerApp');
   const scenes = ['Una historia', 'Un recuerdo', 'Una emoción', 'Una melodía', 'SHIA SONGS'];
   let manualPause = preference.matches, inView = true, frame = 0, modalWasRunning = false;
@@ -15,9 +15,11 @@ export function initBrandFilm() {
 
   hero.controls = false;
   get('filmControls').hidden = false;
+  if (song) song.hidden = false;
 
   const hasContext = () => !picker.classList.contains('hidden') && !customer.classList.contains('hidden');
-  const allowed = () => !document.hidden && inView && hasContext() && !dialog.open;
+  const canPlay = () => !document.hidden && hasContext() && !dialog.open;
+  const allowed = () => inView && canPlay();
   const setName = (button, source) => {
     button.dataset.i18nAriaLabel = source;
     button.setAttribute('aria-label', t(source));
@@ -43,7 +45,7 @@ export function initBrandFilm() {
     setName(pause, ended ? 'Repetir película' : playing ? 'Pausar película' : 'Reanudar película');
     const audible = !hero.muted && hero.volume > 0;
     sound.setAttribute('aria-pressed', String(audible));
-    setName(sound, audible ? 'Desactivar música de la película' : 'Activar música de la película');
+    setName(sound, audible ? 'Desactivar canción de la película' : 'Activar canción de la película');
     get('filmSoundWaves').toggleAttribute('hidden', !audible);
     get('filmSoundCross').toggleAttribute('hidden', audible);
   }
@@ -93,8 +95,20 @@ export function initBrandFilm() {
     } else { manualPause = true; hero.pause(); }
   });
   sound.addEventListener('click', () => {
-    hero.muted = !hero.muted;
-    if (!hero.muted) hero.volume = 1;
+    const enable = hero.muted || hero.volume === 0;
+    hero.muted = !enable;
+    if (enable) {
+      hero.volume = 1;
+      manualPause = false; suspendedHero = false;
+      if (hero.ended || hero.currentTime >= 14.97) hero.currentTime = 0;
+      if (hero.paused && allowed()) void play(hero, true);
+    }
+    update();
+  });
+  song?.addEventListener('click', () => {
+    hero.currentTime = 0; hero.muted = false; hero.volume = 1;
+    manualPause = false; suspendedHero = false;
+    if (canPlay()) void play(hero, true);
     update();
   });
   open.addEventListener('click', () => {
@@ -122,7 +136,7 @@ export function initBrandFilm() {
   });
   get('filmStartStory').addEventListener('click', () => { modalWasRunning = false; close(); });
 
-  const sources = language => ({video:`assets/media/shia-story-${language}.mp4`,poster:`assets/media/shia-story-${language}.jpg`});
+  const sources = language => ({video:`assets/media/shia-story-song-${language}.mp4`,poster:`assets/media/shia-story-${language}.jpg`});
   function languageChanged() {
     revision++;
     const language = getLanguage(), source = sources(language);

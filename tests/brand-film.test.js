@@ -53,14 +53,46 @@ test('Film source, caption labels and playback position follow the language swit
     assert(!a.hero.paused);assert(a.hero.muted,'Autoplay must be silent');
     a.hero.currentTime=7.6;a.hero.dispatchEvent(new a.w.Event('timeupdate'));
     a.w.ShiaI18n.setLanguage('es');await settle();
-    assert.equal(a.hero.querySelector('source').getAttribute('src'),'assets/media/shia-story-es.mp4');
+    assert.equal(a.hero.querySelector('source').getAttribute('src'),'assets/media/shia-story-song-es.mp4');
     assert.equal(a.hero.currentTime,7.6);assert(!a.hero.paused);
     assert.equal(a.d.getElementById('filmPhase').textContent,'Una emoción');
     assert.equal(a.d.getElementById('filmPause').getAttribute('aria-label'),'Pausar película');
     a.d.getElementById('filmOpen').click();await settle();assert(a.d.getElementById('brandFilmDialog').open);assert(a.hero.paused);assert(!a.story.paused);assert(!a.story.muted);
     a.story.currentTime=8.2;a.w.ShiaI18n.setLanguage('en');await settle();
-    assert.equal(a.story.querySelector('source').getAttribute('src'),'assets/media/shia-story-en.mp4');assert.equal(a.story.currentTime,8.2);assert(!a.story.paused);
+    assert.equal(a.story.querySelector('source').getAttribute('src'),'assets/media/shia-story-song-en.mp4');assert.equal(a.story.currentTime,8.2);assert(!a.story.paused);
     a.d.getElementById('filmClose').click();await settle();assert(a.story.paused);assert(a.story.muted);assert.equal(a.d.activeElement.id,'filmOpen');assert(!a.hero.paused);
+  } finally {a.dom.window.close();}
+});
+
+test('The hero song action starts the film from the beginning with its embedded song',async()=>{
+  const a=await setup({reduce:true});
+  try {
+    const action=a.d.getElementById('heroSongLink');
+    assert(!action.hidden);assert.equal(action.tagName,'BUTTON');
+    assert.equal(action.textContent.trim(),'Play with song');
+    a.hero.currentTime=8;a.hero.volume=0;
+    a.visible(false); // On mobile the film can be below the hero copy.
+    action.click();await settle();
+    assert.equal(a.hero.currentTime,0);assert(!a.hero.paused);assert(!a.hero.muted);assert.equal(a.hero.volume,1);
+    assert.equal(a.calls.at(-1).source,'assets/media/shia-story-song-en.mp4');
+    assert.equal(a.d.getElementById('filmSound').getAttribute('aria-pressed'),'true');
+    assert.equal(a.d.getElementById('brandFilmDialog').open,false);
+    assert.equal(a.w.location.hash,'','The song action keeps the visitor in the hero');
+    a.visible(true);a.w.ShiaI18n.setLanguage('es');await settle();
+    assert.equal(action.textContent.trim(),'Reproducir con canción');
+    assert(!a.hero.muted);assert.equal(a.calls.at(-1).source,'assets/media/shia-story-song-es.mp4');
+  } finally {a.dom.window.close();}
+});
+
+test('Turning the hero song on replays a finished film and muting keeps the film running',async()=>{
+  const a=await setup({reduce:true});
+  try {
+    a.hero.currentTime=15;a.hero.dispatchEvent(new a.w.Event('ended'));
+    a.d.getElementById('filmSound').click();await settle();
+    assert.equal(a.hero.currentTime,0);assert(!a.hero.paused);assert(!a.hero.muted);
+    assert.equal(a.d.getElementById('filmSound').getAttribute('aria-label'),'Turn song off');
+    a.d.getElementById('filmSound').click();assert(a.hero.muted);assert(!a.hero.paused);
+    assert.equal(a.d.getElementById('filmSound').getAttribute('aria-label'),'Turn song on');
   } finally {a.dom.window.close();}
 });
 
