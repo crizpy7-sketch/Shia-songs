@@ -1,0 +1,73 @@
+/* KINETIC's typographic energy, adapted to SHIA SONGS' warm music identity. */
+@font-face{font-family:ShiaDisplay;src:url('../fonts/NimbusSansNarrow-Bold.otf') format('opentype');font-weight:700 900;font-display:swap}
+:root{--film-ease:cubic-bezier(.22,1,.36,1)}
+.hero{gap:42px;grid-template-columns:1.05fr 1fr;padding-top:65px;padding-bottom:80px;min-height:700px}
+.hero h1{font-family:ShiaDisplay,Arial,sans-serif;font-size:clamp(72px,7.7vw,108px);font-weight:800;letter-spacing:-.027em;line-height:.95;margin-bottom:30px}
+.hero h1 em{font-family:Georgia,'Times New Roman',serif;font-size:.96em;letter-spacing:-.06em;font-weight:400;line-height:1.1}
+.hero .eyebrow{letter-spacing:.18em}
+.hero-description{max-width:390px;font-size:15px;line-height:1.85}
+.hero-visual{height:530px}
+.hero-photo{top:5px;right:8px;width:78%;height:94%;border-radius:0;filter:saturate(.78)}
+.hero-photo img{object-position:50% 40%}
+.hero-photo figcaption{bottom:25px;left:24px;letter-spacing:.15em}
+.record{width:195px;height:195px;top:12px;left:-13px;box-shadow:0 14px 26px #171d2024}
+.listener-photo{width:184px;bottom:-4px;left:-16px;border-radius:0;z-index:3}
+.sound-note{right:-9px;bottom:53px;padding:13px 17px;z-index:4;border-radius:2px}
+.visual-label{right:-16px;top:213px}
+.hero-motion-toggle{bottom:-54px;right:9px;border-radius:2px}
+.hero-film{position:absolute;top:100px;left:-26px;width:calc(100% + 23px);margin:0;background:var(--ink);color:var(--paper);border:1px solid var(--ink);box-shadow:16px 19px 0 #cbd5bf99,0 16px 34px #171d2029;z-index:5;transform:rotate(-2deg)}
+.film-stage{position:relative;aspect-ratio:16/9;background:var(--ink);isolation:isolate;overflow:hidden}
+.film-stage>video{display:block;width:100%;height:100%;object-fit:contain;background:var(--paper)}
+.hero-film [hidden],.brand-film-dialog [hidden]{display:none!important}
+.film-panel-caption{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 17px;border-bottom:1px solid #f3efe633;font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1.4}
+.film-panel-caption small{font-size:9px;letter-spacing:.07em;flex:none;color:#cbd5bf}
+.film-controls{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:49px;padding:2px 8px 2px 13px}
+.film-open{display:flex;align-items:center;gap:9px;color:var(--paper);font-size:11px;min-height:44px;background:none;border:0;padding:8px 5px;cursor:pointer}
+.film-open .ui-icon{width:14px;height:14px;fill:currentColor;stroke:none}
+.film-open .film-open-arrow{fill:none;stroke:currentColor;stroke-width:1.6;margin-left:10px}
+.film-open:hover{color:var(--sage)}
+.film-clock{font-size:9px;letter-spacing:.06em;font-variant-numeric:tabular-nums;opacity:.75;margin-left:auto;margin-right:8px}
+.film-control{display:grid;place-items:center;width:44px;height:44px;padding:11px;background:none;border:0;color:var(--paper);cursor:pointer;border-left:1px solid #ffffff20}
+.film-control .ui-icon{width:16px;height:16px}
+.film-control:hover{color:var(--sage);background:#ffffff08}
+.film-progress{position:absolute;bottom:0;left:0;height:2px;width:100%;pointer-events:none;background:#ffffff20;z-index:3}
+.film-progress span{display:block;height:100%;background:var(--accent);transform:scaleX(var(--film-progress,0));transform-origin:0 50%}
+.film-status{font-size:10px;color:var(--muted);line-height:1.6;margin-top:11px;max-width:360px}
+.film-status:empty{display:none}
+.film-read-story{display:none}
+.genre-strip{gap:35px;padding-block:22px;background:#e8e9de}
+.genre-strip b{font-family:ShiaDisplay,Arial,sans-serif;font-weight:800;font-size:24px;letter-spacing:.025em}
+.process-list h3{font-family:ShiaDisplay,Arial,sans-serif;font-weight:800;font-size:31px;letter-spacing:-.015em}
+.section-intro h2,.occasions-section h2,.pricing-section h2,.closing-section h2{font-family:ShiaDisplay,Arial,sans-serif;font-weight:800;letter-spacing:-.02em;font-size:clamp(48px,5vw,68px);line-height:1.03}
+.section-intro h2 em,.occasions-section h2 em,.pricing-section h2 em,.closing-section h2 em{font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.04em;font-size:.94em}
+.pricing-section{background:#171d20}
+.price-card{border-radius:2px}
+.pricing-section .price{font-family:ShiaDisplay,Arial,sans-serif;font-size:80px;letter-spacing:-.03em}
+.pricing-section .price span{font-family:var(--sans);letter-spacing:0;font-size:12px}
+.pricing-section h2 em{color:#cbd5bf}
+.closing-section{position:relative;isolation:isolate;overflow:hidden}
+.closing-section:before{content:'';position:absolute;inset:0;background:repeating-radial-gradient(ellipse at 50% 180%,transparent 0 24px,#62696212 25px 26px,transparent 27px 48px);z-index:-1;pointer-events:none}
+.brand-film-dialog{width:min(1100px,calc(100% - 36px));max-width:1100px;padding:0;border:1px solid #7d8775;border-radius:3px;background:var(--ink);color:var(--paper);max-height:calc(100dvh - 36px);overflow:auto}
+.brand-film-dialog::backdrop{background:#0a100fed;backdrop-filter:blur(7px)}
+.brand-film-dialog[open]{display:flex;flex-direction:column}
+.brand-film-dialog .film-dialog-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:17px 22px;border-bottom:1px solid #ffffff25}
+.film-dialog-header>div{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+.brand-film-dialog h2{font-family:ShiaDisplay,Arial,sans-serif;font-size:24px;font-weight:800;line-height:1;margin:0;letter-spacing:.005em;color:var(--paper)}
+.film-dialog-label{font-size:10px;letter-spacing:.04em;color:#cbd5bf;line-height:1.6}
+.film-dialog-close{display:flex;align-items:center;gap:10px;min-height:44px;background:transparent;color:var(--paper);border:1px solid #ffffff50;border-radius:2px;padding:10px 12px;cursor:pointer;font-size:11px;flex:none}
+.film-dialog-close .ui-icon{width:15px;height:15px}
+.film-dialog-close:hover{background:var(--sage);color:var(--ink)}
+.brand-film-dialog video{display:block;aspect-ratio:16/9;object-fit:contain;width:100%;height:auto;background:var(--ink);max-height:calc(100dvh - 230px)}
+.film-dialog-footer{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:18px 22px;border-top:1px solid #ffffff25}
+.film-dialog-footer p{font-size:11px;line-height:1.7;color:#c3c9bd;margin:0;max-width:500px}
+.film-dialog-footer .btn{background:var(--sage);color:var(--ink);border-radius:2px;font-size:11px;min-height:44px;white-space:nowrap;padding:12px 16px;gap:14px;flex:none}
+.brand-film-dialog .film-transcript{padding:0 22px 17px;margin:0}
+.film-transcript summary{font-size:11px;color:#cbd5bf;cursor:pointer;min-height:32px}
+.film-transcript p{font-size:12px;line-height:1.8;color:var(--paper);margin:5px 0 0}
+.film-credit{font-size:12px;line-height:1.8;color:var(--muted);margin-top:26px}
+@media(min-width:1500px){.hero{max-width:1390px;gap:70px}.hero h1{font-size:116px}.hero-visual{height:570px}.hero-film{top:115px;left:-30px;width:calc(100% + 32px)}.hero-photo{height:95%}.hero-description{max-width:400px}}
+@media(max-width:1050px){.hero{gap:30px;min-height:650px}.hero h1{font-size:87px}.hero-visual{height:490px}.hero-film{top:105px;left:-13px;width:calc(100% + 10px)}.film-panel-caption{font-size:8px;padding:12px}.film-clock{margin-right:4px}.film-open{font-size:10px;gap:6px}.film-open .film-open-arrow{margin-left:3px}.film-control{width:39px;padding:10px}.hero-description{font-size:14px}.hero-actions{gap:18px}.hero-photo{height:93%}.listener-photo{width:153px;left:-8px}.sound-note{right:0;bottom:45px;padding:12px}.hero-motion-toggle{right:0;bottom:-44px}}
+@media(max-width:760px){.hero{grid-template-columns:1fr;gap:34px;padding-top:36px;padding-bottom:71px;min-height:0}.hero h1{font-size:clamp(67px,13.5vw,96px);line-height:.94;letter-spacing:-.026em}.hero-description{font-size:15px;max-width:500px}.hero-visual{height:510px;width:100%;max-width:540px;margin:0 auto}.hero-photo{width:76%;right:10px;height:93%}.hero-film{top:90px;left:0;width:calc(100% - 13px);transform:rotate(-1.5deg)}.record{width:187px;height:187px;left:0;top:6px}.listener-photo{left:0;bottom:2px;width:180px}.sound-note{right:0;bottom:48px}.hero-motion-toggle{bottom:-46px}.film-panel-caption{font-size:9px;padding:14px}.film-open{font-size:11px}.film-control{width:44px;padding:11px}.film-clock{margin-right:10px}.genre-strip{gap:18px;padding:18px}.genre-strip b{font-size:23px}.section-intro h2,.occasions-section h2,.pricing-section h2,.closing-section h2{font-size:53px}.process-list h3{font-size:28px}.brand-film-dialog .film-dialog-header{padding:12px 14px;gap:12px}.film-dialog-header>div{gap:5px;flex-direction:column}.film-dialog-label{font-size:9px}.brand-film-dialog h2{font-size:21px}.film-dialog-footer{padding:16px 14px;gap:16px}.film-dialog-footer p{font-size:10px}.film-dialog-footer .btn{font-size:10px;gap:8px;padding:10px 12px}.brand-film-dialog .film-transcript{padding:0 14px 14px}}
+@media(max-width:450px){.hero{gap:31px;padding-bottom:71px}.hero h1{font-size:clamp(62px,15.8vw,71px)}.hero-description{font-size:14px}.hero-visual{height:440px}.hero-film{top:92px;left:0;width:calc(100% - 8px);box-shadow:8px 12px 0 #cbd5bf99,0 16px 28px #171d2024}.hero-photo{width:79%;height:95%;right:3px}.record{width:147px;height:147px;left:0;top:8px}.listener-photo{width:142px;left:0;bottom:0;border-width:5px}.sound-note{bottom:35px;right:0;padding:10px;gap:8px}.sound-note b{font-size:8px}.sound-note small{font-size:7px}.film-panel-caption{font-size:8px;padding:11px 12px}.film-panel-caption small{font-size:8px}.film-controls{padding:1px 5px 1px 8px;gap:1px}.film-open{font-size:10px;gap:5px}.film-open .film-open-arrow{width:12px;height:12px;margin-left:2px}.film-clock{font-size:8px;margin-right:4px}.film-control{width:40px;padding:11px 10px}.visual-label{right:-5px}.hero-motion-toggle{right:0;bottom:-46px}.film-dialog-footer{flex-direction:column;align-items:stretch;gap:12px}.film-dialog-footer .btn{justify-content:space-between}.film-dialog-footer p{font-size:11px}.brand-film-dialog video{max-height:none}.brand-film-dialog{width:calc(100% - 20px);max-height:calc(100dvh - 20px)}.film-dialog-close{font-size:10px;padding:8px 10px}.film-transcript p{font-size:11px}.section-intro h2,.occasions-section h2,.pricing-section h2,.closing-section h2{font-size:47px}}
+@media(max-width:350px){.hero h1{font-size:60px}.hero-visual{height:408px}.hero-film{top:90px}.hero-photo{height:94%}.film-control{width:38px}.film-open{font-size:9px}.film-clock{font-size:7px;margin-right:3px}.film-panel-caption{font-size:7px}.film-panel-caption small{font-size:7px}.hero-motion-toggle{font-size:10px}.sound-note{bottom:25px}.listener-photo{width:129px}}
+@media(prefers-reduced-motion:reduce){.hero-film{transform:none}.hero-photo,.listener-photo,.sound-note{rotate:none!important;translate:none!important}.film-progress span{transition:none}.brand-film-dialog::backdrop{backdrop-filter:none}}
