@@ -1,5 +1,6 @@
 .hero-song-link{margin:17px 0 0;font-size:12px;font-weight:600}
-.hero-song-link a{display:inline-flex;align-items:center;gap:10px;min-height:36px;text-underline-offset:5px}
+.hero-song-link button{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:5px}
+.hero-song-link button[hidden]{display:none}
 .hero-song-link .ui-icon{width:15px;height:15px;fill:currentColor;stroke:none}
 .song-section{display:grid;grid-template-columns:1fr 1.12fr;align-items:center;gap:80px;padding-top:76px;padding-bottom:80px;border-bottom:1px solid var(--line);scroll-margin-top:110px}
 .song-section>*{min-width:0}

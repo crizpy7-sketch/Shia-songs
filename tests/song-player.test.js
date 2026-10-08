@@ -35,7 +35,7 @@ test('The selected full song starts only on request, and interface switches pres
   try {
     assert(a.song.controls);assert.equal(a.song.preload,'none');assert(a.song.paused);
     assert(!a.calls.includes('featuredSong'));
-    a.d.getElementById('heroSongLink').dispatchEvent(new a.w.MouseEvent('click',{bubbles:true,button:0,cancelable:true}));
+    await a.song.play();
     await settle();assert(!a.song.paused);assert(a.hero.paused);
     assert.equal(a.song.querySelector('source').getAttribute('src'),'assets/media/que-suerte-la-mia.mp3');
     a.song.currentTime=46.8;a.song.dispatchEvent(new a.w.Event('timeupdate'));
@@ -47,8 +47,6 @@ test('The selected full song starts only on request, and interface switches pres
     assert.equal(a.d.getElementById('featuredSongTitle').textContent,'Qué suerte la mía');
     a.song.currentTime=199.44;a.song.pause();a.song.dispatchEvent(new a.w.Event('ended'));
     assert.equal(a.d.getElementById('songState').textContent,'Canción completada');
-    a.d.getElementById('heroSongLink').dispatchEvent(new a.w.MouseEvent('click',{bubbles:true,button:0,cancelable:true}));
-    await settle();assert.equal(a.song.currentTime,0);assert(!a.song.paused);
   } finally {a.dom.window.close();}
 });
 
@@ -58,6 +56,9 @@ test('Song and audible films take turns; silent decorative playback does not int
     a.hero.muted=false;await a.song.play();assert(a.hero.paused);assert(a.hero.muted);
     await a.hero.play();assert(!a.song.paused,'A silent film may continue decorating the hero');
     a.hero.muted=false;a.hero.dispatchEvent(new a.w.Event('volumechange'));assert(a.song.paused);
+    await a.song.play();assert(a.hero.paused);assert(a.hero.muted);
+    a.d.getElementById('heroSongLink').click();await settle();
+    assert(a.song.paused);assert(!a.hero.paused);assert(!a.hero.muted);assert.equal(a.hero.currentTime,0);
     await a.song.play();assert(a.hero.paused);assert(a.hero.muted);
     a.d.getElementById('filmOpen').click();await settle();assert(a.song.paused);assert(!a.story.paused);
     a.d.getElementById('filmClose').click();await settle();assert(a.song.paused,'Closing the film does not restart a song');

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { once } = require('node:events');
+const { prepareHeroSong } = require('./hero-song.cjs');
 
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'assets', 'media');
@@ -197,29 +198,6 @@ function render(t) {
   ctx.restore();
 }
 
-function soundtrack() {
-  const sr=48000,duration=15,frames=sr*duration,buffer=Buffer.alloc(44+frames*4);
-  buffer.write('RIFF');buffer.writeUInt32LE(buffer.length-8,4);buffer.write('WAVE',8);buffer.write('fmt ',12);buffer.writeUInt32LE(16,16);buffer.writeUInt16LE(1,20);buffer.writeUInt16LE(2,22);buffer.writeUInt32LE(sr,24);buffer.writeUInt32LE(sr*4,28);buffer.writeUInt16LE(4,32);buffer.writeUInt16LE(16,34);buffer.write('data',36);buffer.writeUInt32LE(frames*4,40);
-  let seed=8917;const noise=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296*2-1;};
-  const beat=.625;const bass=[65.406,82.407,98,73.416,65.406,87.307,98,82.407];
-  for(let i=0;i<frames;i++){
-    const t=i/sr,k=t%beat,n=noise(),note=bass[Math.floor(t/beat)%8];
-    const kick=Math.sin(TAU*(48*k+14*(1-Math.exp(-k*45))))*Math.exp(-k*16)*.22;
-    const sub=Math.sin(TAU*note*t)*Math.exp(-k*2)*Math.min(1,k*15)*.12;
-    const off=(t+beat*.5)%beat;const clap=n*Math.exp(-off*55)*.025;
-    const hatTime=t%(beat*.5);const hat=n*Math.exp(-hatTime*145)*.012;
-    const chord=(Math.sin(TAU*130.81*t)+Math.sin(TAU*164.81*t)+Math.sin(TAU*196*t))*.035*(.6+.4*Math.sin(t*.6));
-    const p=(t+.14)%3;const whoosh=n*(p>2.58?(p-2.58)*.11:Math.exp(-p*18)*.03);
-    const pluckTime=t%(beat*.5),freq=[523.25,659.25,783.99,987.77][Math.floor(t/(beat*.5))%4];
-    const pluck=(Math.sin(TAU*freq*t)+.3*Math.sin(TAU*freq*2*t))*Math.exp(-pluckTime*15)*.055;
-    const fade=clamp(t/.035)*clamp((15-t)/.23);const total=(kick+sub+clap+hat+chord+whoosh+pluck)*fade;
-    const pan=Math.sin(t*.7)*.08;
-    buffer.writeInt16LE(Math.round(clamp(total*(1-pan),-.96,.96)*32767),44+i*4);
-    buffer.writeInt16LE(Math.round(clamp(total*(1+pan),-.96,.96)*32767),46+i*4);
-  }
-  const file=path.join(root,'artifacts','film-render',`soundtrack-${locale}.wav`);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,buffer);return file;
-}
-
 async function main() {
   wedding=await loadImage(path.join(root,'assets/photos/couple.webp'));
   const marks=[1.6,4.6,7.7,10.55,14.1];
@@ -227,8 +205,8 @@ async function main() {
   for(let i=0;i<marks.length;i++){render(marks[i]);fs.writeFileSync(path.join(stills,`frame-${locale}-${i+1}.jpg`),canvas.toBuffer('image/jpeg',90));}
   render(1.6);fs.writeFileSync(path.join(output,`shia-story-${locale}.jpg`),canvas.toBuffer('image/jpeg',93));
   if(process.argv.includes('--stills'))return;
-  const wav=soundtrack();
-  const ff=spawn('ffmpeg',['-y','-hide_banner','-loglevel','error','-f','rawvideo','-pixel_format','rgba','-video_size','1920x1080','-framerate','60','-i','pipe:0','-i',wav,'-c:v','libx264','-preset','fast','-crf','21','-pix_fmt','yuv420p','-profile:v','high','-level:v','4.2','-c:a','aac','-b:a','192k','-t','15','-movflags','+faststart',path.join(output,`shia-story-${locale}.mp4`)],{stdio:['pipe','inherit','inherit']});
+  const soundtrack=prepareHeroSong();
+  const ff=spawn('ffmpeg',['-y','-hide_banner','-loglevel','error','-f','rawvideo','-pixel_format','rgba','-video_size','1920x1080','-framerate','60','-i','pipe:0','-i',soundtrack,'-c:v','libx264','-preset','fast','-crf','21','-pix_fmt','yuv420p','-profile:v','high','-level:v','4.2','-c:a','copy','-t','15','-movflags','+faststart',path.join(output,`shia-story-song-${locale}.mp4`)],{stdio:['pipe','inherit','inherit']});
   const completion=once(ff,'close');ff.stdin.on('error',()=>{});
   for(let i=0;i<900;i++){
     render(i/60);
