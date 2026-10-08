@@ -209,5 +209,18 @@ export const STATIC_TRANSLATIONS = {
   "Pulse reproducir para ver la película.": "Press play to watch the film.",
   "Tipografía y película de marca": "Typography and brand film",
   "La película de marca usa fotografía ilustrativa con los mismos créditos de esta página, gráficos originales y música instrumental original. No presenta clientes ni pedidos personalizados.": "The brand film uses illustrative photography credited on this page, original graphics, and an original instrumental. It does not depict customers or personalized orders.",
-  "Fuente sin modificar.": "Unmodified font."
+  "Fuente sin modificar.": "Unmodified font.",
+  "Escuche una canción real": "Hear a real song",
+  "DE LA HISTORIA A LA CANCIÓN": "FROM STORY TO SONG",
+  "Escuche la historia.": "Hear the story.",
+  "Sienta la música.": "Feel the music.",
+  "Una canción de SHIA SONGS para escuchar completa. Pulse reproducir y deje que la música cuente la historia.": "A SHIA SONGS track to hear in full. Press play and let the music tell the story.",
+  "CANCIÓN DESTACADA": "FEATURED SONG",
+  "Pulse reproducir para escuchar": "Press play to listen",
+  "Escuchar Qué suerte la mía": "Listen to Qué suerte la mía",
+  "Canción completada": "Song complete",
+  "Reproduciendo": "Playing",
+  "En pausa": "Paused",
+  "No se pudo cargar esta canción. Puede seguir creando su canción.": "This song could not load. You can continue creating your song.",
+  "Pulse reproducir en el reproductor para escuchar.": "Press play in the player to listen."
 };

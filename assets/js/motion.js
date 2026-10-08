@@ -59,7 +59,7 @@ function init() {
   });
   entrance(document.querySelector('.hero-visual'), { delay: 80, distance: 20, duration: 680 });
   initHeroMotion();
-  const sections = document.querySelectorAll('.process-section, .story-band, .occasions-section, .pricing-section, .faq-section, .closing-section');
+  const sections = document.querySelectorAll('.song-section, .process-section, .story-band, .occasions-section, .pricing-section, .faq-section, .closing-section');
   if (!preference?.matches && typeof IntersectionObserver === 'function') {
     observer = new IntersectionObserver(entries => {
       entries.forEach(entry => { if (entry.isIntersecting && !entry.target.closest('.hidden')) reveal(entry.target); });
