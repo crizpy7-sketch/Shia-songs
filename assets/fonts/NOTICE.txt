@@ -1,0 +1,4 @@
+Nimbus Sans, Nimbus Sans Narrow and Nimbus Mono PS are unmodified URW Base 35 fonts.
+Copyright 2015 URW Software; 2013, 2014 (URW)++ Design & Development.
+License: AGPL-3 with font exception. See LICENSE.txt.
+Original source: https://github.com/ArtifexSoftware/urw-base35-fonts
